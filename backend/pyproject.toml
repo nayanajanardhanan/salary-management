@@ -29,5 +29,6 @@ packages = ["app"]
 testpaths = ["tests"]
 markers = [
     "postgres: requires a running PostgreSQL instance (opt-in, see backend/README.md)",
+    "scale: exercises the ~10,000 employee dataset (opt-in, slow; see backend/README.md)",
 ]
-addopts = "-m \"not postgres\""
+addopts = "-m \"not postgres and not scale\""

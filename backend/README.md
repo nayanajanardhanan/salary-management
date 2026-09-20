@@ -34,8 +34,8 @@ Then check `GET http://127.0.0.1:8000/health`.
 pytest
 ```
 
-PostgreSQL integration tests are opt-in and excluded from the default run
-(see below).
+PostgreSQL integration tests and the ~10k-employee scale test are opt-in
+and excluded from the default run (see below).
 
 ## Database configuration
 
@@ -67,6 +67,19 @@ PostgreSQL instance:
 
 ```bash
 PAYSCOPE_TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/payscope_test pytest -m postgres
+```
+
+### Scale test (~10,000 employees)
+
+`tests/scale/test_scale_10k.py` verifies listing, search, filtering,
+pagination, and analytics stay functionally correct at the target scale of
+NFR 4.2/Acceptance Criterion 8.9. It generates and inserts ~10,000
+employee/salary records (via the same `app.data_generation` dataset
+generator and `app.scripts.seed.seed_database` helper used elsewhere), so
+it's marked `scale` and skipped by default. Run it explicitly with:
+
+```bash
+pytest -m scale
 ```
 
 ## Database migrations (Alembic)
