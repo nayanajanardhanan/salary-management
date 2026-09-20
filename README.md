@@ -45,6 +45,10 @@ The project will be developed incrementally using AI-assisted engineering practi
 
 The project structure and technical documentation will be added incrementally as development progresses.
 
+## Running the Frontend
+
+The frontend (React + TypeScript + Vite) lives under [`frontend/`](./frontend). See [`frontend/README.md`](./frontend/README.md) for setup and available scripts.
+
 ## License
 
 This project is created for educational and development purposes.
