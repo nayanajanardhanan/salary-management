@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.v1.dependencies import pagination_params
+from app.api.v1.dependencies import employee_filters_params, pagination_params
 from app.db.session import get_db
 from app.schemas.employee import EmployeeListResponse, EmployeeRead
 from app.services import employee_service
+from app.services.employee_service import EmployeeFilters
 from app.utils.pagination import PaginationParams
 
 router = APIRouter(prefix="/api/v1/employees", tags=["employees"])
@@ -13,11 +14,20 @@ router = APIRouter(prefix="/api/v1/employees", tags=["employees"])
 @router.get("", response_model=EmployeeListResponse)
 def list_employees(
     pagination: PaginationParams = Depends(pagination_params),
+    filters: EmployeeFilters = Depends(employee_filters_params),
     db: Session = Depends(get_db),
 ) -> EmployeeListResponse:
-    """List employees, paginated. Returns an empty `items` list, not an
-    error, when there are no matching employees."""
-    page = employee_service.list_employees(db, pagination)
+    """List employees, paginated, optionally searched and/or filtered.
+
+    - `search`: case-insensitive match against employee code, first name,
+      or last name.
+    - `country` / `department`: exact-match filters.
+
+    All are optional and combine with AND; omitting them preserves the
+    plain paginated listing. Returns an empty `items` list, not an error,
+    when there are no matching employees.
+    """
+    page = employee_service.list_employees(db, pagination, filters)
 
     return EmployeeListResponse(
         items=[EmployeeRead.model_validate(employee) for employee in page.items],

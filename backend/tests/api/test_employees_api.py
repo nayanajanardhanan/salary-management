@@ -137,6 +137,156 @@ def test_list_employees_response_structure(client: TestClient, db_session: Sessi
     }
 
 
+def test_list_employees_search_matches_first_name(client: TestClient, db_session: Session) -> None:
+    db_session.add_all(
+        [
+            _employee(1, first_name="Margaret", last_name="Hamilton"),
+            _employee(2, first_name="Ada", last_name="Lovelace"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"search": "Margaret"})
+
+    body = response.json()
+    assert body["total"] == 1
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-001"]
+
+
+def test_list_employees_search_matches_last_name(client: TestClient, db_session: Session) -> None:
+    db_session.add_all(
+        [
+            _employee(1, first_name="Margaret", last_name="Hamilton"),
+            _employee(2, first_name="Ada", last_name="Lovelace"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"search": "Lovelace"})
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
+
+
+def test_list_employees_search_matches_employee_code(client: TestClient, db_session: Session) -> None:
+    _seed_employees(db_session, 3)
+
+    response = client.get(ENDPOINT, params={"search": "EMP-002"})
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
+
+
+def test_list_employees_search_is_case_insensitive(client: TestClient, db_session: Session) -> None:
+    db_session.add_all([_employee(1, first_name="Margaret", last_name="Hamilton")])
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"search": "margaret"})
+
+    assert response.json()["total"] == 1
+
+
+def test_list_employees_search_matches_partial_substring(client: TestClient, db_session: Session) -> None:
+    db_session.add_all([_employee(1, first_name="Margaret", last_name="Hamilton")])
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"search": "garet"})
+
+    assert response.json()["total"] == 1
+
+
+def test_list_employees_blank_search_behaves_like_no_search(client: TestClient, db_session: Session) -> None:
+    _seed_employees(db_session, 3)
+
+    response = client.get(ENDPOINT, params={"search": "   "})
+
+    assert response.json()["total"] == 3
+
+
+def test_list_employees_filter_by_country(client: TestClient, db_session: Session) -> None:
+    db_session.add_all(
+        [
+            _employee(1, country="UK"),
+            _employee(2, country="India"),
+            _employee(3, country="UK"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"country": "India"})
+
+    body = response.json()
+    assert body["total"] == 1
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
+
+
+def test_list_employees_filter_by_department(client: TestClient, db_session: Session) -> None:
+    db_session.add_all(
+        [
+            _employee(1, department="Engineering"),
+            _employee(2, department="Sales"),
+            _employee(3, department="Engineering"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"department": "Sales"})
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
+
+
+def test_list_employees_combines_search_and_multiple_filters(
+    client: TestClient, db_session: Session
+) -> None:
+    db_session.add_all(
+        [
+            _employee(1, first_name="Ada", country="UK", department="Engineering"),
+            _employee(2, first_name="Ada", country="UK", department="Sales"),
+            _employee(3, first_name="Ada", country="India", department="Engineering"),
+            _employee(4, first_name="Mo", country="UK", department="Engineering"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(
+        ENDPOINT, params={"search": "Ada", "country": "UK", "department": "Engineering"}
+    )
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-001"]
+
+
+def test_list_employees_search_with_no_matches_returns_empty_page(
+    client: TestClient, db_session: Session
+) -> None:
+    _seed_employees(db_session, 5)
+
+    response = client.get(ENDPOINT, params={"search": "no-such-employee"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body == {"items": [], "page": 1, "page_size": DEFAULT_PAGE_SIZE, "total": 0, "has_next": False}
+
+
+def test_list_employees_pagination_applied_after_filtering(
+    client: TestClient, db_session: Session
+) -> None:
+    db_session.add_all(
+        [_employee(i, department="Engineering") for i in range(1, 6)]
+        + [_employee(i, department="Sales") for i in range(6, 9)]
+    )
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"department": "Engineering", "page": 2, "page_size": 2})
+
+    body = response.json()
+    assert body["total"] == 5
+    assert body["page"] == 2
+    assert body["has_next"] is True
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-003", "EMP-004"]
+
+
 def test_list_employees_deterministic_ordering(client: TestClient, db_session: Session) -> None:
     # Inserted in an order unrelated to name/department, to confirm results
     # are ordered by id rather than any incidental insertion or name order.
