@@ -95,10 +95,27 @@ class EmployeeRead(BaseModel):
     employment_status: EmploymentStatus
 
 
+class EmployeeListItem(EmployeeRead):
+    """One employee as returned by the employee list endpoint.
+
+    Extends `EmployeeRead` with the employee's current salary
+    (`docs/requirements.md` Section 8, Acceptance Criterion 1: the listing
+    must show, at minimum, name, department, country, and salary amount +
+    currency). Reuses `SalaryRead` unchanged so amount and currency are
+    always represented together (FR-2.3) rather than as separate top-level
+    fields. `salary` is `None` for an employee with no salary record —
+    `docs/requirements.md` treats that as a valid state (e.g. the
+    salary-range filters already document that such an employee simply
+    can't match), so it stays in the listing rather than being excluded.
+    """
+
+    salary: SalaryRead | None = None
+
+
 class EmployeeListResponse(BaseModel):
     """A page of employees, with pagination metadata."""
 
-    items: list[EmployeeRead]
+    items: list[EmployeeListItem]
     page: int
     page_size: int
     total: int

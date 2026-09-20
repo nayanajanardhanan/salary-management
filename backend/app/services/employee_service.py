@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, contains_eager, joinedload
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models.employee import Employee
@@ -229,12 +229,26 @@ def list_employees(
     Pagination itself is still applied at the database level via `paginate`
     (offset/limit plus a `COUNT` query on the same statement), so the full
     employee table is never loaded into memory.
+
+    Every employee's current salary (`docs/requirements.md` Section 8,
+    Acceptance Criterion 1) is loaded in the same query via `contains_eager`
+    on top of a `Salary` join, rather than one salary lookup per employee
+    (architecture.md Section 9). When a salary filter is already active, the
+    existing `INNER JOIN` used for that filter is reused for eager loading
+    instead of adding a second join to `salaries`; otherwise a `LEFT OUTER
+    JOIN` is added so employees without a salary record are still included,
+    with `salary` populated as `None`.
     """
     statement = select(Employee)
 
     filters = filters or EmployeeFilters()
-    if filters.currency or filters.min_salary is not None or filters.max_salary is not None:
-        statement = statement.join(Salary, Salary.employee_id == Employee.id)
+    salary_filter_active = (
+        filters.currency or filters.min_salary is not None or filters.max_salary is not None
+    )
+    join = statement.join if salary_filter_active else statement.outerjoin
+    statement = join(Salary, Salary.employee_id == Employee.id).options(
+        contains_eager(Employee.salary)
+    )
 
     conditions = _build_filter_conditions(filters)
     if conditions:

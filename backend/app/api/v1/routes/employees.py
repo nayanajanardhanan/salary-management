@@ -8,6 +8,7 @@ from app.models.employee import Employee
 from app.models.salary import Salary
 from app.schemas.employee import (
     EmployeeCreate,
+    EmployeeListItem,
     EmployeeListResponse,
     EmployeeRead,
     EmployeeSalaryDetails,
@@ -98,11 +99,15 @@ def list_employees(
     All are optional and combine with AND; omitting them preserves the
     plain paginated listing. Returns an empty `items` list, not an error,
     when there are no matching employees.
+
+    Each item includes the employee's current salary (`docs/requirements.md`
+    Section 8, Acceptance Criterion 1), amount and currency together
+    (FR-2.3); `salary` is `null` for an employee with no salary record.
     """
     page = employee_service.list_employees(db, pagination, filters, sort)
 
     return EmployeeListResponse(
-        items=[EmployeeRead.model_validate(employee) for employee in page.items],
+        items=[EmployeeListItem.model_validate(employee) for employee in page.items],
         page=page.page,
         page_size=page.page_size,
         total=page.total,

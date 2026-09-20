@@ -2,7 +2,7 @@ from decimal import Decimal
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import func, select
+from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session
 
 from app.core.errors import ConflictError, NotFoundError
@@ -155,6 +155,7 @@ def test_list_employees_response_structure(client: TestClient, db_session: Sessi
         "country",
         "job_title",
         "employment_status",
+        "salary",
     }
 
 
@@ -750,6 +751,150 @@ def test_list_employees_deterministic_ordering(client: TestClient, db_session: S
     codes = [item["employee_code"] for item in first_response["items"]]
     assert codes == ["EMP-001", "EMP-002", "EMP-003"]
     assert first_response == second_response
+
+
+# --- docs/requirements.md Section 8, Acceptance Criterion 1: employee
+# listing includes current salary --------------------------------------
+
+
+def test_list_employees_includes_salary_amount_and_currency(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="95000.00", currency="GBP")
+    db_session.commit()
+
+    response = client.get(ENDPOINT)
+
+    body = response.json()
+    assert body["items"][0]["salary"] == {
+        "employee_id": body["items"][0]["id"],
+        "amount": "95000.00",
+        "currency": "GBP",
+    }
+
+
+def test_list_employees_multiple_employees_return_their_correct_salaries(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00", currency="USD")
+    _employee_with_salary(db_session, 2, amount="2000.00", currency="EUR")
+    _employee_with_salary(db_session, 3, amount="3000.00", currency="GBP")
+    db_session.commit()
+
+    response = client.get(ENDPOINT)
+
+    body = response.json()
+    salaries_by_code = {item["employee_code"]: item["salary"] for item in body["items"]}
+    assert salaries_by_code["EMP-001"]["amount"] == "1000.00"
+    assert salaries_by_code["EMP-001"]["currency"] == "USD"
+    assert salaries_by_code["EMP-002"]["amount"] == "2000.00"
+    assert salaries_by_code["EMP-002"]["currency"] == "EUR"
+    assert salaries_by_code["EMP-003"]["amount"] == "3000.00"
+    assert salaries_by_code["EMP-003"]["currency"] == "GBP"
+
+
+def test_list_employees_employee_without_salary_has_null_salary(
+    client: TestClient, db_session: Session
+) -> None:
+    db_session.add(_employee(1))  # no salary record
+    db_session.commit()
+
+    response = client.get(ENDPOINT)
+
+    body = response.json()
+    assert body["total"] == 1
+    assert body["items"][0]["employee_code"] == "EMP-001"
+    assert body["items"][0]["salary"] is None
+
+
+def test_list_employees_mix_of_employees_with_and_without_salary(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00", currency="USD")
+    db_session.add(_employee(2))  # no salary record
+    db_session.commit()
+
+    response = client.get(ENDPOINT)
+
+    body = response.json()
+    salaries_by_code = {item["employee_code"]: item["salary"] for item in body["items"]}
+    assert salaries_by_code["EMP-001"] is not None
+    assert salaries_by_code["EMP-002"] is None
+
+
+def test_list_employees_salary_amount_and_currency_are_always_paired(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00", currency="USD")
+    db_session.add(_employee(2))  # no salary record
+    db_session.commit()
+
+    response = client.get(ENDPOINT)
+
+    for item in response.json()["items"]:
+        salary = item["salary"]
+        if salary is None:
+            continue
+        assert set(salary.keys()) == {"employee_id", "amount", "currency"}
+        assert salary["amount"] is not None
+        assert salary["currency"] is not None
+
+
+def test_list_employees_salary_decimal_precision_is_serialized_correctly(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="100000.10", currency="USD")
+    db_session.commit()
+
+    response = client.get(ENDPOINT)
+
+    assert Decimal(response.json()["items"][0]["salary"]["amount"]) == Decimal("100000.10")
+
+
+def test_list_employees_salary_filter_still_returns_salary_in_items(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00", currency="USD")
+    _employee_with_salary(db_session, 2, amount="5000.00", currency="USD")
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"min_salary": "2000"})
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
+    assert body["items"][0]["salary"]["amount"] == "5000.00"
+
+
+def test_list_employees_no_n_plus_one_salary_queries(
+    client: TestClient, db_session: Session
+) -> None:
+    """Loading salary alongside a page of employees must not scale with the
+    number of employees returned: exactly one query for the count and one
+    for the page's rows, regardless of how many employees are on the page
+    (docs/architecture.md Section 9)."""
+    for i in range(1, 11):
+        _employee_with_salary(db_session, i, amount="1000.00", currency="USD")
+    db_session.commit()
+
+    statements = []
+
+    def _capture(conn, cursor, statement, parameters, context, executemany):
+        if statement.strip().upper().startswith("SELECT"):
+            statements.append(statement)
+
+    engine = db_session.get_bind()
+    event.listen(engine, "before_cursor_execute", _capture)
+    try:
+        response = client.get(ENDPOINT, params={"page_size": 10})
+    finally:
+        event.remove(engine, "before_cursor_execute", _capture)
+
+    assert response.status_code == 200
+    assert len(response.json()["items"]) == 10
+    # One COUNT query (pagination) + one SELECT for the page's rows, with
+    # salary joined in, not one additional query per employee.
+    assert len(statements) == 2
+    assert any("JOIN" in statement.upper() for statement in statements)
 
 
 # --- POST /api/v1/employees -------------------------------------------------
