@@ -1,7 +1,12 @@
 from fastapi import APIRouter, Depends, Path, status
 from sqlalchemy.orm import Session
 
-from app.api.v1.dependencies import employee_filters_params, employee_sort_params, pagination_params
+from app.api.v1.dependencies import (
+    employee_filters_params,
+    employee_sort_params,
+    pagination_params,
+    require_api_token,
+)
 from app.core.errors import NotFoundError
 from app.db.session import get_db
 from app.models.employee import Employee
@@ -26,7 +31,11 @@ from app.services import employee_service, salary_calculation_service, salary_se
 from app.services.employee_service import EmployeeFilters, EmployeeSort
 from app.utils.pagination import PaginationParams
 
-router = APIRouter(prefix="/api/v1/employees", tags=["employees"])
+router = APIRouter(
+    prefix="/api/v1/employees",
+    tags=["employees"],
+    dependencies=[Depends(require_api_token)],
+)
 
 
 def _get_employee_or_404(db: Session, employee_id: int) -> Employee:

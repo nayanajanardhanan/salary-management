@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = False
     database_url: str = "sqlite:///./payscope.db"
+    api_token: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

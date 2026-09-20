@@ -1,10 +1,13 @@
 """Shared FastAPI dependencies for `/api/v1` routes."""
 
+import secrets
 from decimal import Decimal
 
-from fastapi import Query
+from fastapi import Depends, Query
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from app.core.errors import ValidationError
+from app.core.config import Settings, get_settings
+from app.core.errors import UnauthorizedError, ValidationError
 from app.services.employee_service import (
     DEFAULT_SORT_BY,
     DEFAULT_SORT_ORDER,
@@ -21,6 +24,36 @@ from app.services.salary_service import (
 )
 from app.utils.pagination import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaginationParams
 from app.utils.sorting import SortOrder
+
+_bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def require_api_token(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+    settings: Settings = Depends(get_settings),
+) -> None:
+    """Require a valid `Authorization: Bearer <token>` header.
+
+    Applied centrally as a router-level dependency (`dependencies=[...]` on
+    each protected `APIRouter`) so employee, salary, and salary-analytics
+    data can never be reached without it, without embedding auth checks in
+    individual services (`docs/architecture.md` Section 10;
+    `docs/requirements.md` NFR 4.4, Acceptance Criterion 8.10). A missing,
+    malformed, or incorrect token is rejected identically with a `401`, so a
+    caller cannot distinguish "no token" from "wrong token". If no token is
+    configured server-side, every request is rejected (fails closed) rather
+    than leaving the API open.
+    """
+    token = settings.api_token
+    if (
+        not token
+        or credentials is None
+        or not secrets.compare_digest(credentials.credentials, token)
+    ):
+        raise UnauthorizedError(
+            code="UNAUTHORIZED",
+            message="Missing or invalid authentication credentials.",
+        )
 
 
 def pagination_params(

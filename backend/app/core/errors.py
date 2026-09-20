@@ -42,6 +42,18 @@ class AppError(Exception):
         super().__init__(message)
 
 
+class UnauthorizedError(AppError):
+    """Raised when a request lacks valid authentication credentials.
+
+    Raised by the shared `require_api_token` dependency
+    (`app.api.v1.dependencies`), applied centrally at the router level, not
+    by individual services — see `docs/architecture.md` Section 10 and
+    `docs/requirements.md` NFR 4.4 / Acceptance Criterion 8.10.
+    """
+
+    status_code = status.HTTP_401_UNAUTHORIZED
+
+
 class NotFoundError(AppError):
     """Raised when a requested resource does not exist."""
 
