@@ -6,7 +6,7 @@ from app.core.errors import NotFoundError
 from app.db.session import get_db
 from app.models.employee import Employee
 from app.models.salary import Salary
-from app.schemas.employee import EmployeeCreate, EmployeeListResponse, EmployeeRead
+from app.schemas.employee import EmployeeCreate, EmployeeListResponse, EmployeeRead, EmployeeUpdate
 from app.schemas.error import ErrorResponse
 from app.schemas.salary import (
     SalaryCalculatedValues,
@@ -116,6 +116,36 @@ def get_employee(
     Raises a `404` if no employee with `employee_id` exists.
     """
     employee = _get_employee_or_404(db, employee_id)
+
+    return EmployeeRead.model_validate(employee)
+
+
+@router.patch(
+    "/{employee_id}",
+    response_model=EmployeeRead,
+    responses={
+        404: {"model": ErrorResponse, "description": "Employee not found"},
+        422: {"model": ErrorResponse, "description": "Invalid request body or employee_id"},
+    },
+)
+def update_employee(
+    data: EmployeeUpdate,
+    employee_id: int = Path(..., description="The employee's numeric id."),
+    db: Session = Depends(get_db),
+) -> EmployeeRead:
+    """Partially update an employee's editable information.
+
+    Partial update (PATCH semantics): every field in the request body is
+    optional, and only fields actually supplied are changed — fields left
+    out keep their current value. Raises a `404` if no employee with
+    `employee_id` exists. `employee_code` (the employee's unique
+    identifier) and `id` cannot be changed through this endpoint; the
+    request body rejects any other field outright, and rejects `null` for
+    any of its own fields too (see `EmployeeUpdate`). The employee's
+    salary is a separate resource, untouched here — see
+    `PUT /employees/{employee_id}/salary` to change it.
+    """
+    employee = employee_service.update_employee(db, employee_id, data)
 
     return EmployeeRead.model_validate(employee)
 

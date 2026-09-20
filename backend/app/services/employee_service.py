@@ -6,9 +6,9 @@ from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import ConflictError
+from app.core.errors import ConflictError, NotFoundError
 from app.models.employee import Employee
-from app.schemas.employee import EmployeeCreate
+from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.utils.pagination import Page, PaginationParams, paginate
 from app.utils.sorting import SortOrder, apply_sort
 
@@ -108,6 +108,40 @@ def create_employee(session: Session, data: EmployeeCreate) -> Employee:
             code="EMPLOYEE_CODE_ALREADY_EXISTS",
             message=f"Employee code {data.employee_code!r} already exists",
         ) from None
+
+    return employee
+
+
+def update_employee(session: Session, employee_id: int, data: EmployeeUpdate) -> Employee:
+    """Partially update the employee identified by `employee_id`.
+
+    Only fields the client actually supplied in `data` are changed (PATCH
+    semantics, via `model_dump(exclude_unset=True)`) — omitted fields keep
+    their current value. Raises `NotFoundError` if no employee with
+    `employee_id` exists. `id` and `employee_code` are never touched here
+    (they're excluded from `EmployeeUpdate` entirely — see its docstring),
+    and no uniqueness conflict is possible from this operation as a
+    result, unlike `create_employee`. Committed within the same
+    transaction; if the commit fails, the session is rolled back (which
+    also reverts the in-memory attribute changes made below, since a
+    rollback expires every object in the session) and the exception is
+    re-raised for the centralized unexpected-error handler, rather than
+    leaving a partial update in place or exposing a raw database error.
+    """
+    employee = get_employee(session, employee_id)
+    if employee is None:
+        raise NotFoundError(
+            code="EMPLOYEE_NOT_FOUND", message=f"Employee {employee_id} not found"
+        )
+
+    for field, value in data.model_dump(exclude_unset=True).items():
+        setattr(employee, field, value)
+
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
 
     return employee
 

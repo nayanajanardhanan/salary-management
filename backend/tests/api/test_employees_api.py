@@ -1,11 +1,14 @@
+from decimal import Decimal
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.errors import ConflictError
+from app.core.errors import ConflictError, NotFoundError
 from app.models.employee import Employee
-from app.schemas.employee import EmployeeCreate
+from app.models.salary import Salary
+from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.services import employee_service
 from app.utils.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
@@ -749,3 +752,299 @@ def test_create_employee_service_rolls_back_and_raises_conflict_on_race(
     assert count == 1
     # The session must still be usable after the rollback.
     assert db_session.scalar(select(func.count()).select_from(Employee)) == 1
+
+
+# --- PATCH /api/v1/employees/{employee_id} ---------------------------------
+
+
+def test_update_employee_returns_200(client: TestClient, db_session: Session) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(f"{ENDPOINT}/{employee.id}", json={"department": "Product"})
+
+    assert response.status_code == 200
+    assert response.json()["department"] == "Product"
+
+
+def test_update_employee_partial_update_only_changes_supplied_fields(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(f"{ENDPOINT}/{employee.id}", json={"department": "Product"})
+
+    body = response.json()
+    assert body["department"] == "Product"
+    assert body["first_name"] == "First1"
+    assert body["last_name"] == "Last1"
+    assert body["country"] == "UK"
+    assert body["job_title"] == "Software Engineer"
+    assert body["employment_status"] == "active"
+    assert body["employee_code"] == "EMP-001"
+
+
+def test_update_employee_updates_multiple_fields_at_once(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(
+        f"{ENDPOINT}/{employee.id}",
+        json={"job_title": "Retired", "employment_status": "terminated"},
+    )
+
+    body = response.json()
+    assert body["job_title"] == "Retired"
+    assert body["employment_status"] == "terminated"
+
+
+def test_update_employee_empty_body_is_a_no_op(client: TestClient, db_session: Session) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(f"{ENDPOINT}/{employee.id}", json={})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["first_name"] == "First1"
+    assert body["department"] == "Engineering"
+
+
+def test_update_employee_response_fields(client: TestClient, db_session: Session) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    body = client.patch(f"{ENDPOINT}/{employee.id}", json={"department": "Sales"}).json()
+
+    assert set(body.keys()) == {
+        "id",
+        "employee_code",
+        "first_name",
+        "last_name",
+        "department",
+        "country",
+        "job_title",
+        "employment_status",
+    }
+
+
+def test_update_employee_persists_and_is_visible_via_get(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    client.patch(f"{ENDPOINT}/{employee.id}", json={"country": "Germany"})
+
+    response = client.get(f"{ENDPOINT}/{employee.id}")
+
+    assert response.status_code == 200
+    assert response.json()["country"] == "Germany"
+
+
+def test_update_employee_persists_at_the_database_level(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    client.patch(f"{ENDPOINT}/{employee.id}", json={"last_name": "Hopper"})
+
+    db_session.expire_all()
+    persisted = db_session.get(Employee, employee.id)
+    assert persisted.last_name == "Hopper"
+
+
+def test_update_employee_for_nonexistent_employee_returns_404(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.patch(f"{ENDPOINT}/999999", json={"department": "Sales"})
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "EMPLOYEE_NOT_FOUND"
+
+
+def test_update_employee_rejects_non_integer_employee_id(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.patch(f"{ENDPOINT}/not-a-number", json={"department": "Sales"})
+
+    assert response.status_code == 422
+
+
+def test_update_employee_rejects_empty_first_name(client: TestClient, db_session: Session) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(f"{ENDPOINT}/{employee.id}", json={"first_name": ""})
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+@pytest.mark.parametrize(
+    "field", ["first_name", "last_name", "department", "country", "job_title"]
+)
+def test_update_employee_rejects_empty_string_field(
+    client: TestClient, db_session: Session, field: str
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(f"{ENDPOINT}/{employee.id}", json={field: ""})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["first_name", "last_name", "department", "country", "job_title", "employment_status"],
+)
+def test_update_employee_rejects_explicit_null(
+    client: TestClient, db_session: Session, field: str
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(f"{ENDPOINT}/{employee.id}", json={field: None})
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_update_employee_rejects_invalid_employment_status(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(
+        f"{ENDPOINT}/{employee.id}", json={"employment_status": "on_leave"}
+    )
+
+    assert response.status_code == 422
+
+
+def test_update_employee_rejects_field_too_long(client: TestClient, db_session: Session) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(f"{ENDPOINT}/{employee.id}", json={"department": "X" * 101})
+
+    assert response.status_code == 422
+
+
+def test_update_employee_cannot_change_employee_code(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(f"{ENDPOINT}/{employee.id}", json={"employee_code": "EMP-999"})
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert any(detail["location"] == ["body", "employee_code"] for detail in body["error"]["details"])
+
+
+def test_update_employee_cannot_change_id(client: TestClient, db_session: Session) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.patch(f"{ENDPOINT}/{employee.id}", json={"id": 999999})
+
+    assert response.status_code == 422
+
+
+def test_update_employee_employee_code_is_unaffected_by_other_field_updates(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    client.patch(f"{ENDPOINT}/{employee.id}", json={"department": "Product"})
+
+    persisted = db_session.execute(
+        select(Employee).where(Employee.id == employee.id)
+    ).scalar_one()
+    assert persisted.employee_code == "EMP-001"
+
+
+def test_update_employee_does_not_affect_other_employees(
+    client: TestClient, db_session: Session
+) -> None:
+    employees = _seed_employees(db_session, 2)
+    target, other = employees[0], employees[1]
+
+    client.patch(f"{ENDPOINT}/{target.id}", json={"department": "Product"})
+
+    unaffected = db_session.execute(select(Employee).where(Employee.id == other.id)).scalar_one()
+    assert unaffected.department == "Engineering"
+
+
+def test_update_employee_does_not_affect_salary(client: TestClient, db_session: Session) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.flush()
+    db_session.add(Salary(employee_id=employee.id, amount=Decimal("1000.00"), currency="USD"))
+    db_session.commit()
+
+    client.patch(f"{ENDPOINT}/{employee.id}", json={"department": "Product"})
+
+    response = client.get(f"{ENDPOINT}/{employee.id}/salary")
+    assert response.status_code == 200
+    assert response.json()["amount"] == "1000.00"
+
+
+def test_update_employee_service_raises_not_found_for_missing_employee(
+    db_session: Session,
+) -> None:
+    with pytest.raises(NotFoundError):
+        employee_service.update_employee(
+            db_session, 999999, EmployeeUpdate(department="Product")
+        )
+
+
+def test_update_employee_service_rolls_back_on_persistence_failure(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    def _boom() -> None:
+        raise RuntimeError("simulated persistence failure")
+
+    monkeypatch.setattr(db_session, "commit", _boom)
+
+    with pytest.raises(RuntimeError):
+        employee_service.update_employee(
+            db_session, employee.id, EmployeeUpdate(department="Product")
+        )
+
+    # `session.rollback()` inside `update_employee` must both revert the
+    # in-memory attribute change and leave the session usable for the
+    # query below (rather than leaving it in a broken "pending rollback"
+    # state).
+    db_session.expire_all()
+    persisted = db_session.get(Employee, employee.id)
+    assert persisted.department == "Engineering"
