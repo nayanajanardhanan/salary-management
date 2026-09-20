@@ -1,6 +1,37 @@
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class SalaryCreate(BaseModel):
+    """Request body for creating a salary record for an employee.
+
+    Mirrors `Salary`'s own writable columns (`amount`, `currency`);
+    `employee_id` is not part of the body since it's already the path
+    parameter of `POST /employees/{employee_id}/salary`, not a client
+    choice.
+    """
+
+    amount: Decimal = Field(
+        ...,
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+        description="Salary amount, non-negative, up to 2 decimal places.",
+    )
+    currency: str = Field(
+        ...,
+        min_length=3,
+        max_length=3,
+        description="3-letter ISO 4217 currency code (e.g. 'USD').",
+    )
+
+    @field_validator("currency")
+    @classmethod
+    def _currency_must_be_alpha_upper(cls, value: str) -> str:
+        if not value.isalpha() or value != value.upper():
+            raise ValueError("currency must be a 3-letter uppercase ISO 4217 code (e.g. 'USD').")
+        return value
 
 
 class SalaryRead(BaseModel):

@@ -4,10 +4,13 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from sqlalchemy import ColumnElement, and_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.errors import ConflictError
 from app.models.employee import Employee
 from app.models.salary import Salary
+from app.schemas.salary import SalaryCreate
 from app.utils.pagination import Page, PaginationParams, paginate
 from app.utils.sorting import SortOrder, apply_sort
 
@@ -62,6 +65,42 @@ def get_salary_for_employee(session: Session, employee_id: int) -> Salary | None
     """
     statement = select(Salary).where(Salary.employee_id == employee_id)
     return session.execute(statement).scalar_one_or_none()
+
+
+def create_salary(session: Session, employee_id: int, data: SalaryCreate) -> Salary:
+    """Create the salary record for `employee_id` from `data`.
+
+    Each employee may have at most one salary record (`Salary.employee_id`
+    is unique; see `app.models.salary.Salary`, FR-2.2), so an existing
+    record is checked for first and rejected with `ConflictError` rather
+    than silently overwritten or duplicated. That check and the insert
+    happen in the same request, but a concurrent request could still race
+    past it before either commits; the database's own unique constraint is
+    the final guard for that case, so a resulting `IntegrityError` on
+    commit is rolled back and translated into the same `ConflictError`
+    instead of surfacing as a raw database error. The caller is
+    responsible for confirming `employee_id` refers to an existing
+    employee first (see `_get_employee_or_404` in the employees route) —
+    this function only checks for a pre-existing salary.
+    """
+    if get_salary_for_employee(session, employee_id) is not None:
+        raise ConflictError(
+            code="SALARY_ALREADY_EXISTS",
+            message=f"Employee {employee_id} already has a salary record",
+        )
+
+    salary = Salary(employee_id=employee_id, amount=data.amount, currency=data.currency)
+    session.add(salary)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise ConflictError(
+            code="SALARY_ALREADY_EXISTS",
+            message=f"Employee {employee_id} already has a salary record",
+        ) from None
+
+    return salary
 
 
 def list_salaries(

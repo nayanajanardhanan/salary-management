@@ -62,6 +62,20 @@ class ValidationError(AppError):
     status_code = status.HTTP_422_UNPROCESSABLE_CONTENT
 
 
+class ConflictError(AppError):
+    """Raised when a request conflicts with existing state.
+
+    E.g. creating a salary record for an employee that already has one
+    (`Salary.employee_id` is unique — see `app.models.salary.Salary`,
+    `docs/requirements.md` FR-2.2): rejected rather than silently
+    overwritten, and reported as `409` rather than `422`, since the request
+    itself is well-formed — it just can't be applied against the current
+    state.
+    """
+
+    status_code = status.HTTP_409_CONFLICT
+
+
 _STATUS_CODE_TO_ERROR_CODE = {
     status.HTTP_400_BAD_REQUEST: "BAD_REQUEST",
     status.HTTP_401_UNAUTHORIZED: "UNAUTHORIZED",

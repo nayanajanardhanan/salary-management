@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path
+from fastapi import APIRouter, Depends, Path, status
 from sqlalchemy.orm import Session
 
 from app.api.v1.dependencies import employee_filters_params, employee_sort_params, pagination_params
@@ -8,7 +8,7 @@ from app.models.employee import Employee
 from app.models.salary import Salary
 from app.schemas.employee import EmployeeListResponse, EmployeeRead
 from app.schemas.error import ErrorResponse
-from app.schemas.salary import SalaryCalculatedValues, SalaryRead, SalarySummaryRead
+from app.schemas.salary import SalaryCalculatedValues, SalaryCreate, SalaryRead, SalarySummaryRead
 from app.services import employee_service, salary_calculation_service, salary_service
 from app.services.employee_service import EmployeeFilters, EmployeeSort
 from app.utils.pagination import PaginationParams
@@ -112,6 +112,34 @@ def get_employee_salary(
     """
     _get_employee_or_404(db, employee_id)
     salary = _get_salary_or_404(db, employee_id)
+
+    return SalaryRead.model_validate(salary)
+
+
+@router.post(
+    "/{employee_id}/salary",
+    response_model=SalaryRead,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        404: {"model": ErrorResponse, "description": "Employee not found"},
+        409: {"model": ErrorResponse, "description": "Employee already has a salary record"},
+        422: {"model": ErrorResponse, "description": "Invalid request body or employee_id"},
+    },
+)
+def create_employee_salary(
+    data: SalaryCreate,
+    employee_id: int = Path(..., description="The employee's numeric id."),
+    db: Session = Depends(get_db),
+) -> SalaryRead:
+    """Create the salary record for a single employee.
+
+    Raises a `404` if no employee with `employee_id` exists, and a `409` if
+    that employee already has a salary record — each employee has at most
+    one (`Salary.employee_id` is unique; `docs/requirements.md` FR-2.2), so
+    this never overwrites an existing record.
+    """
+    _get_employee_or_404(db, employee_id)
+    salary = salary_service.create_salary(db, employee_id, data)
 
     return SalaryRead.model_validate(salary)
 
