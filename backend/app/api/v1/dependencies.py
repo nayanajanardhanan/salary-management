@@ -1,9 +1,16 @@
 """Shared FastAPI dependencies for `/api/v1` routes."""
 
-from fastapi import Query
+from fastapi import HTTPException, Query
 
-from app.services.employee_service import EmployeeFilters
+from app.services.employee_service import (
+    DEFAULT_SORT_BY,
+    DEFAULT_SORT_ORDER,
+    SORTABLE_FIELDS,
+    EmployeeFilters,
+    EmployeeSort,
+)
 from app.utils.pagination import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaginationParams
+from app.utils.sorting import SortOrder
 
 
 def pagination_params(
@@ -49,3 +56,29 @@ def _blank_to_none(value: str | None) -> str | None:
         return None
     value = value.strip()
     return value or None
+
+
+def employee_sort_params(
+    sort_by: str = Query(
+        DEFAULT_SORT_BY,
+        description=f"Field to sort by. One of: {', '.join(sorted(SORTABLE_FIELDS))}.",
+    ),
+    sort_order: SortOrder = Query(DEFAULT_SORT_ORDER, description="Sort direction."),
+) -> EmployeeSort:
+    """Parse and validate `sort_by`/`sort_order` query params.
+
+    `sort_order` is a `SortOrder` enum, so FastAPI rejects anything other
+    than `asc`/`desc` with a `422` before this function runs. `sort_by` is
+    checked against the same `SORTABLE_FIELDS` allowlist the service uses
+    to build the query, and rejected with a `422` too, for consistency with
+    how invalid `page`/`page_size` values are already handled.
+    """
+    if sort_by not in SORTABLE_FIELDS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Unsupported sort_by value: {sort_by!r}. "
+                f"Supported values: {', '.join(sorted(SORTABLE_FIELDS))}."
+            ),
+        )
+    return EmployeeSort(sort_by=sort_by, sort_order=sort_order)

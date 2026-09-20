@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
@@ -285,6 +286,165 @@ def test_list_employees_pagination_applied_after_filtering(
     assert body["page"] == 2
     assert body["has_next"] is True
     assert [item["employee_code"] for item in body["items"]] == ["EMP-003", "EMP-004"]
+
+
+def test_list_employees_default_sort_is_id_ascending(client: TestClient, db_session: Session) -> None:
+    db_session.add_all(
+        [
+            _employee(1, first_name="Zed"),
+            _employee(2, first_name="Amy"),
+            _employee(3, first_name="Mo"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(ENDPOINT)
+
+    assert [item["employee_code"] for item in response.json()["items"]] == [
+        "EMP-001",
+        "EMP-002",
+        "EMP-003",
+    ]
+
+
+def test_list_employees_sort_by_first_name_ascending(client: TestClient, db_session: Session) -> None:
+    db_session.add_all(
+        [
+            _employee(1, first_name="Zed"),
+            _employee(2, first_name="Amy"),
+            _employee(3, first_name="Mo"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"sort_by": "first_name", "sort_order": "asc"})
+
+    assert [item["first_name"] for item in response.json()["items"]] == ["Amy", "Mo", "Zed"]
+
+
+def test_list_employees_sort_by_first_name_descending(client: TestClient, db_session: Session) -> None:
+    db_session.add_all(
+        [
+            _employee(1, first_name="Zed"),
+            _employee(2, first_name="Amy"),
+            _employee(3, first_name="Mo"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"sort_by": "first_name", "sort_order": "desc"})
+
+    assert [item["first_name"] for item in response.json()["items"]] == ["Zed", "Mo", "Amy"]
+
+
+@pytest.mark.parametrize(
+    "field,values",
+    [
+        ("employee_code", None),
+        ("last_name", ["Zeta", "Alpha", "Mu"]),
+        ("department", ["Sales", "Engineering", "Marketing"]),
+        ("country", ["UK", "Canada", "Germany"]),
+        ("job_title", ["Manager", "Analyst", "Engineer"]),
+        ("employment_status", None),
+    ],
+)
+def test_list_employees_sort_by_each_supported_field(
+    client: TestClient, db_session: Session, field: str, values: list[str] | None
+) -> None:
+    if values is None:
+        employees = [_employee(1), _employee(2), _employee(3)]
+    else:
+        field_key = field
+        employees = [_employee(i + 1, **{field_key: v}) for i, v in enumerate(values)]
+    db_session.add_all(employees)
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"sort_by": field, "sort_order": "asc"})
+
+    assert response.status_code == 200
+    returned = [item[field] for item in response.json()["items"]]
+    assert returned == sorted(returned)
+
+
+def test_list_employees_rejects_unsupported_sort_field(client: TestClient, db_session: Session) -> None:
+    response = client.get(ENDPOINT, params={"sort_by": "salary"})
+
+    assert response.status_code == 422
+
+
+def test_list_employees_rejects_invalid_sort_order(client: TestClient, db_session: Session) -> None:
+    response = client.get(ENDPOINT, params={"sort_by": "first_name", "sort_order": "sideways"})
+
+    assert response.status_code == 422
+
+
+def test_list_employees_sort_combined_with_search(client: TestClient, db_session: Session) -> None:
+    db_session.add_all(
+        [
+            _employee(1, first_name="Ada", last_name="Zed"),
+            _employee(2, first_name="Ada", last_name="Amy"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(
+        ENDPOINT, params={"search": "Ada", "sort_by": "last_name", "sort_order": "asc"}
+    )
+
+    body = response.json()
+    assert body["total"] == 2
+    assert [item["last_name"] for item in body["items"]] == ["Amy", "Zed"]
+
+
+def test_list_employees_sort_combined_with_filters(client: TestClient, db_session: Session) -> None:
+    db_session.add_all(
+        [
+            _employee(1, department="Engineering", first_name="Zed"),
+            _employee(2, department="Sales", first_name="Amy"),
+            _employee(3, department="Engineering", first_name="Amy"),
+        ]
+    )
+    db_session.commit()
+
+    response = client.get(
+        ENDPOINT, params={"department": "Engineering", "sort_by": "first_name", "sort_order": "asc"}
+    )
+
+    body = response.json()
+    assert body["total"] == 2
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-003", "EMP-001"]
+
+
+def test_list_employees_sort_combined_with_pagination(client: TestClient, db_session: Session) -> None:
+    db_session.add_all([_employee(i, first_name=f"Name{10 - i:02d}") for i in range(1, 11)])
+    db_session.commit()
+
+    response = client.get(
+        ENDPOINT, params={"sort_by": "first_name", "sort_order": "asc", "page": 2, "page_size": 3}
+    )
+
+    body = response.json()
+    assert body["total"] == 10
+    # Ascending by first_name ("Name01".."Name09","Name10"); page 2 of 3.
+    assert [item["first_name"] for item in body["items"]] == ["Name03", "Name04", "Name05"]
+
+
+def test_list_employees_sort_is_stable_for_equal_values(client: TestClient, db_session: Session) -> None:
+    # All employees share the same department, so sorting by department
+    # alone is ambiguous; the id tiebreaker must still make it deterministic.
+    db_session.add_all([_employee(i, department="Engineering") for i in [3, 1, 2]])
+    db_session.commit()
+
+    first_response = client.get(ENDPOINT, params={"sort_by": "department", "sort_order": "asc"}).json()
+    second_response = client.get(ENDPOINT, params={"sort_by": "department", "sort_order": "asc"}).json()
+
+    assert first_response == second_response
+    # Tiebreaker is id ascending, i.e. insertion order (EMP-003, EMP-001, EMP-002).
+    assert [item["employee_code"] for item in first_response["items"]] == [
+        "EMP-003",
+        "EMP-001",
+        "EMP-002",
+    ]
 
 
 def test_list_employees_deterministic_ordering(client: TestClient, db_session: Session) -> None:
