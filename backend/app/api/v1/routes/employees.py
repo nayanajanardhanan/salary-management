@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 from app.api.v1.dependencies import employee_filters_params, employee_sort_params, pagination_params
 from app.db.session import get_db
 from app.schemas.employee import EmployeeListResponse, EmployeeRead
-from app.services import employee_service
+from app.schemas.salary import SalaryRead
+from app.services import employee_service, salary_service
 from app.services.employee_service import EmployeeFilters, EmployeeSort
 from app.utils.pagination import PaginationParams
 
@@ -59,3 +60,32 @@ def get_employee(
         raise HTTPException(status_code=404, detail=f"Employee {employee_id} not found")
 
     return EmployeeRead.model_validate(employee)
+
+
+@router.get(
+    "/{employee_id}/salary",
+    response_model=SalaryRead,
+    responses={
+        404: {"description": "Employee not found, or the employee has no salary record"},
+    },
+)
+def get_employee_salary(
+    employee_id: int = Path(..., description="The employee's numeric id."),
+    db: Session = Depends(get_db),
+) -> SalaryRead:
+    """Retrieve the salary record for a single employee.
+
+    Raises a `404` if no employee with `employee_id` exists, or if that
+    employee exists but has no associated salary record.
+    """
+    employee = employee_service.get_employee(db, employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail=f"Employee {employee_id} not found")
+
+    salary = salary_service.get_salary_for_employee(db, employee_id)
+    if salary is None:
+        raise HTTPException(
+            status_code=404, detail=f"No salary record found for employee {employee_id}"
+        )
+
+    return SalaryRead.model_validate(salary)
