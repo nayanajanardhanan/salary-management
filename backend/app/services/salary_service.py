@@ -198,7 +198,7 @@ def list_salaries(
     if filters.department or filters.country:
         statement = statement.join(Employee, Salary.employee_id == Employee.id)
 
-    conditions = _build_filter_conditions(filters)
+    conditions = build_filter_conditions(filters)
     if conditions:
         statement = statement.where(and_(*conditions))
 
@@ -210,7 +210,13 @@ def list_salaries(
     return paginate(session, statement, pagination)
 
 
-def _build_filter_conditions(filters: SalaryFilters) -> list[ColumnElement[bool]]:
+def build_filter_conditions(filters: SalaryFilters) -> list[ColumnElement[bool]]:
+    """Translate `filters` into a list of SQLAlchemy `WHERE` conditions.
+
+    Shared with `analytics_service`, which reuses this rather than
+    reimplementing the same filter semantics for salary statistics
+    (`docs/requirements.md` FR-6.5: analytics reflect any active filters).
+    """
     conditions: list[ColumnElement[bool]] = []
 
     if filters.employee_id is not None:
