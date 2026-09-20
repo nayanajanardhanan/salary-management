@@ -782,3 +782,172 @@ def test_update_salary_service_rolls_back_on_persistence_failure(
     ).scalar_one()
     assert persisted.amount == Decimal("1000.00")
     assert persisted.currency == "USD"
+
+
+# --- DELETE /{employee_id}/salary ------------------------------------------
+
+
+def test_delete_employee_salary_returns_204(client: TestClient, db_session: Session) -> None:
+    employee = _seed_employee_with_salary(db_session)
+
+    response = client.delete(f"{ENDPOINT}/{employee.id}/salary")
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+
+def test_delete_employee_salary_removes_it_from_the_database(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _seed_employee_with_salary(db_session)
+
+    client.delete(f"{ENDPOINT}/{employee.id}/salary")
+
+    remaining = db_session.execute(
+        select(Salary).where(Salary.employee_id == employee.id)
+    ).scalar_one_or_none()
+    assert remaining is None
+
+
+def test_delete_employee_salary_subsequent_get_returns_404(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _seed_employee_with_salary(db_session)
+
+    client.delete(f"{ENDPOINT}/{employee.id}/salary")
+    response = client.get(f"{ENDPOINT}/{employee.id}/salary")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "SALARY_NOT_FOUND"
+
+
+def test_delete_employee_salary_subsequent_summary_returns_404(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _seed_employee_with_salary(db_session)
+
+    client.delete(f"{ENDPOINT}/{employee.id}/salary")
+    response = client.get(f"{ENDPOINT}/{employee.id}/salary/summary")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "SALARY_NOT_FOUND"
+
+
+def test_delete_employee_salary_allows_recreating_afterward(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _seed_employee_with_salary(db_session)
+
+    client.delete(f"{ENDPOINT}/{employee.id}/salary")
+    response = client.post(
+        f"{ENDPOINT}/{employee.id}/salary", json={"amount": "3000.00", "currency": "EUR"}
+    )
+
+    assert response.status_code == 201
+    assert response.json()["amount"] == "3000.00"
+
+
+def test_delete_employee_salary_does_not_delete_the_employee(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _seed_employee_with_salary(db_session)
+
+    client.delete(f"{ENDPOINT}/{employee.id}/salary")
+    response = client.get(f"{ENDPOINT}/{employee.id}")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == employee.id
+
+
+def test_delete_employee_salary_leaves_unrelated_records_intact(
+    client: TestClient, db_session: Session
+) -> None:
+    target = _seed_employee_with_salary(db_session, index=1, amount="1000.00", currency="USD")
+    other = _seed_employee_with_salary(db_session, index=2, amount="2000.00", currency="GBP")
+
+    client.delete(f"{ENDPOINT}/{target.id}/salary")
+
+    other_salary = db_session.execute(
+        select(Salary).where(Salary.employee_id == other.id)
+    ).scalar_one()
+    assert other_salary.amount == Decimal("2000.00")
+    assert other_salary.currency == "GBP"
+
+    other_employee_response = client.get(f"{ENDPOINT}/{other.id}")
+    assert other_employee_response.status_code == 200
+
+
+def test_delete_employee_salary_rejects_non_integer_employee_id(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.delete(f"{ENDPOINT}/not-a-number/salary")
+
+    assert response.status_code == 422
+
+
+def test_delete_employee_salary_for_nonexistent_employee_returns_404(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.delete(f"{ENDPOINT}/999999/salary")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "EMPLOYEE_NOT_FOUND"
+
+
+def test_delete_employee_salary_for_employee_without_salary_returns_404(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.delete(f"{ENDPOINT}/{employee.id}/salary")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "SALARY_NOT_FOUND"
+
+
+def test_delete_employee_salary_twice_returns_404_on_second_attempt(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _seed_employee_with_salary(db_session)
+
+    first = client.delete(f"{ENDPOINT}/{employee.id}/salary")
+    second = client.delete(f"{ENDPOINT}/{employee.id}/salary")
+
+    assert first.status_code == 204
+    assert second.status_code == 404
+    assert second.json()["error"]["code"] == "SALARY_NOT_FOUND"
+
+
+def test_delete_salary_service_raises_not_found_for_missing_salary(
+    db_session: Session,
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    with pytest.raises(NotFoundError):
+        salary_service.delete_salary(db_session, employee.id)
+
+
+def test_delete_salary_service_rolls_back_on_persistence_failure(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    employee = _seed_employee_with_salary(db_session, amount="1000.00", currency="USD")
+
+    def _boom() -> None:
+        raise RuntimeError("simulated persistence failure")
+
+    monkeypatch.setattr(db_session, "commit", _boom)
+
+    with pytest.raises(RuntimeError):
+        salary_service.delete_salary(db_session, employee.id)
+
+    # `session.rollback()` inside `delete_salary` must both revert the
+    # pending delete and leave the session usable for the query below.
+    persisted = db_session.execute(
+        select(Salary).where(Salary.employee_id == employee.id)
+    ).scalar_one()
+    assert persisted.amount == Decimal("1000.00")
+    assert persisted.currency == "USD"

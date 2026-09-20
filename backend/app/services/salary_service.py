@@ -135,6 +135,36 @@ def update_salary(session: Session, employee_id: int, data: SalaryUpdate) -> Sal
     return salary
 
 
+def delete_salary(session: Session, employee_id: int) -> None:
+    """Delete the salary record for `employee_id`.
+
+    Raises `NotFoundError` if the employee has no salary record to delete
+    (there is nothing documented in `docs/requirements.md` restricting
+    salary deletion otherwise, so no further business check is applied).
+    `Salary.employee_id` is the foreign key on the child (`salaries`) side
+    of the one-to-one relationship — `employees` has no column referencing
+    `salaries` — so deleting a `Salary` row here can never cascade to, or
+    otherwise affect, its `Employee` row. Committed within the same
+    transaction; if persistence fails, the session is rolled back (so the
+    row is not left half-deleted) and the exception is re-raised for the
+    centralized unexpected-error handler rather than exposing a raw
+    database error.
+    """
+    salary = get_salary_for_employee(session, employee_id)
+    if salary is None:
+        raise NotFoundError(
+            code="SALARY_NOT_FOUND",
+            message=f"No salary record found for employee {employee_id}",
+        )
+
+    session.delete(salary)
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+
+
 def list_salaries(
     session: Session,
     pagination: PaginationParams,

@@ -183,6 +183,33 @@ def update_employee_salary(
     return SalaryRead.model_validate(salary)
 
 
+@router.delete(
+    "/{employee_id}/salary",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {
+            "model": ErrorResponse,
+            "description": "Employee not found, or the employee has no salary record",
+        },
+        422: {"model": ErrorResponse, "description": "Invalid employee_id"},
+    },
+)
+def delete_employee_salary(
+    employee_id: int = Path(..., description="The employee's numeric id."),
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete an employee's existing salary record.
+
+    Raises a `404` if no employee with `employee_id` exists, or if that
+    employee has no salary record to delete. Returns `204 No Content` on
+    success, with no response body. Deletes only the `Salary` row —
+    `employee_id` is the foreign key on the `Salary` side of the
+    relationship, so the employee record itself is never affected.
+    """
+    _get_employee_or_404(db, employee_id)
+    salary_service.delete_salary(db, employee_id)
+
+
 @router.get(
     "/{employee_id}/salary/summary",
     response_model=SalarySummaryRead,
