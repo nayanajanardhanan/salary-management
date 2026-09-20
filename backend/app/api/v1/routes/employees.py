@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 
 from app.api.v1.dependencies import employee_filters_params, employee_sort_params, pagination_params
@@ -39,3 +39,23 @@ def list_employees(
         total=page.total,
         has_next=page.has_next,
     )
+
+
+@router.get(
+    "/{employee_id}",
+    response_model=EmployeeRead,
+    responses={404: {"description": "Employee not found"}},
+)
+def get_employee(
+    employee_id: int = Path(..., description="The employee's numeric id."),
+    db: Session = Depends(get_db),
+) -> EmployeeRead:
+    """Retrieve a single employee by id.
+
+    Raises a `404` if no employee with `employee_id` exists.
+    """
+    employee = employee_service.get_employee(db, employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail=f"Employee {employee_id} not found")
+
+    return EmployeeRead.model_validate(employee)

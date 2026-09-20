@@ -447,6 +447,71 @@ def test_list_employees_sort_is_stable_for_equal_values(client: TestClient, db_s
     ]
 
 
+def test_get_employee_returns_existing_employee(client: TestClient, db_session: Session) -> None:
+    employees = _seed_employees(db_session, 3)
+    target = employees[1]
+
+    response = client.get(f"{ENDPOINT}/{target.id}")
+
+    assert response.status_code == 200
+    assert response.json()["employee_code"] == "EMP-002"
+
+
+def test_get_employee_response_fields(client: TestClient, db_session: Session) -> None:
+    employees = _seed_employees(db_session, 1)
+    target = employees[0]
+
+    response = client.get(f"{ENDPOINT}/{target.id}")
+
+    body = response.json()
+    assert set(body.keys()) == {
+        "id",
+        "employee_code",
+        "first_name",
+        "last_name",
+        "department",
+        "country",
+        "job_title",
+        "employment_status",
+    }
+    assert body["id"] == target.id
+    assert body["first_name"] == target.first_name
+    assert body["last_name"] == target.last_name
+    assert body["department"] == target.department
+    assert body["country"] == target.country
+    assert body["job_title"] == target.job_title
+    assert body["employment_status"] == target.employment_status.value
+
+
+def test_get_employee_uses_integer_id(client: TestClient, db_session: Session) -> None:
+    employees = _seed_employees(db_session, 1)
+    target = employees[0]
+
+    response = client.get(f"{ENDPOINT}/{target.id}")
+
+    assert response.status_code == 200
+    assert isinstance(response.json()["id"], int)
+
+
+def test_get_employee_not_found_returns_404(client: TestClient, db_session: Session) -> None:
+    response = client.get(f"{ENDPOINT}/999999")
+
+    assert response.status_code == 404
+    assert "detail" in response.json()
+
+
+def test_get_employee_not_found_on_empty_database(client: TestClient, db_session: Session) -> None:
+    response = client.get(f"{ENDPOINT}/1")
+
+    assert response.status_code == 404
+
+
+def test_get_employee_rejects_non_integer_id(client: TestClient, db_session: Session) -> None:
+    response = client.get(f"{ENDPOINT}/not-a-number")
+
+    assert response.status_code == 422
+
+
 def test_list_employees_deterministic_ordering(client: TestClient, db_session: Session) -> None:
     # Inserted in an order unrelated to name/department, to confirm results
     # are ordered by id rather than any incidental insertion or name order.

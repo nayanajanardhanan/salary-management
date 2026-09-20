@@ -50,6 +50,16 @@ class EmployeeSort:
     sort_order: SortOrder = DEFAULT_SORT_ORDER
 
 
+def get_employee(session: Session, employee_id: int) -> Employee | None:
+    """Return the employee with `employee_id`, or `None` if none exists.
+
+    Looks up by primary key via `Session.get`, which returns at most one row
+    (and serves it from the identity map when already loaded) rather than
+    running a fresh `SELECT` every time.
+    """
+    return session.get(Employee, employee_id)
+
+
 def list_employees(
     session: Session,
     pagination: PaginationParams,
