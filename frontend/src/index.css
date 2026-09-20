@@ -98,6 +98,10 @@ body {
   text-decoration: underline;
 }
 
+.app-header__signout {
+  margin-left: auto;
+}
+
 main {
   flex: 1;
   padding: 24px;
@@ -123,6 +127,53 @@ main {
   to {
     transform: rotate(360deg);
   }
+}
+
+.auth-page {
+  display: flex;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+}
+
+.auth-card form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.auth-card button[type='submit'] {
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
 }
 
 .error-message {

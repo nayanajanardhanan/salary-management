@@ -1,3 +1,4 @@
+import { expireSession, getToken } from '../auth/authStore'
 import type { ApiErrorPayload } from '../types/api'
 
 /**
@@ -24,10 +25,20 @@ export class ApiError extends Error {
 /**
  * Shared fetch wrapper: every resource-specific API module (added alongside
  * the feature that needs it) builds on this instead of calling `fetch`
- * directly, so base URL, JSON handling, and error normalization live in one
- * place.
+ * directly, so base URL, JSON handling, authentication, and error
+ * normalization all live in one place — pages/components never attach the
+ * `Authorization` header or interpret a 401 themselves.
+ *
+ * The stored access token (see `../auth/authStore.ts`) is attached
+ * automatically when present, exactly as the backend's `require_api_token`
+ * dependency expects (`Authorization: Bearer <token>`). A `401` response
+ * means the backend rejected the token — it's cleared centrally here
+ * (`expireSession`), which flips the whole app to the unauthenticated state
+ * via `AuthContext`, without every call site having to handle it.
  */
 export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = getToken()
+
   let response: Response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {
@@ -35,6 +46,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
       headers: {
         Accept: 'application/json',
         ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init.headers,
       },
     })
@@ -47,6 +59,10 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      expireSession()
+    }
+
     const payload = (await response.json().catch(() => null)) as ApiErrorPayload | null
     throw new ApiError(
       response.status,
