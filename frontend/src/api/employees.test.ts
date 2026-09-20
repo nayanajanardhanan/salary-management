@@ -65,4 +65,53 @@ describe('fetchEmployees', () => {
     const [requestUrl] = fetchMock.mock.calls[0]
     expect(String(requestUrl)).toMatch(/\/api\/v1\/employees$/)
   })
+
+  it('includes the department query parameter when a department value is given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ department: 'Engineering' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.searchParams.get('department')).toBe('Engineering')
+  })
+
+  it('includes the country query parameter when a country value is given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ country: 'United Kingdom' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.searchParams.get('country')).toBe('United Kingdom')
+  })
+
+  it('combines search, department, and country query parameters when all are given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ search: 'Ada', department: 'Engineering', country: 'United Kingdom' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.searchParams.get('search')).toBe('Ada')
+    expect(url.searchParams.get('department')).toBe('Engineering')
+    expect(url.searchParams.get('country')).toBe('United Kingdom')
+  })
+
+  it('omits the department and country query parameters when they are empty', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ department: '', country: '' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees$/)
+  })
 })

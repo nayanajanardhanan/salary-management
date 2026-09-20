@@ -11,6 +11,10 @@ export interface FetchEmployeesParams {
    * this module just forwards the value.
    */
   search?: string
+  /** Exact-match filter on department (FR-4.1); combines with `search`/`country` via AND. */
+  department?: string
+  /** Exact-match filter on country (FR-4.2); combines with `search`/`department` via AND. */
+  country?: string
 }
 
 /**
@@ -18,16 +22,24 @@ export interface FetchEmployeesParams {
  * (`./client.ts`), which attaches the `Authorization` header and normalizes
  * errors — this module never calls `fetch` directly.
  *
- * Only the optional `search` param is forwarded, and only when non-empty;
- * pagination (`page`/`page_size`) is left unset so the backend's own
- * defaults apply (`page=1`, `page_size=20`; see `app.utils.pagination`),
- * rather than this module re-declaring them and risking drift from the
- * backend's actual limits.
+ * Each optional param is forwarded only when non-empty, so a caller can
+ * combine any subset of `search`/`department`/`country` (FR-4.4) without
+ * this module needing to know which combination is active. Pagination
+ * (`page`/`page_size`) is left unset so the backend's own defaults apply
+ * (`page=1`, `page_size=20`; see `app.utils.pagination`), rather than this
+ * module re-declaring them and risking drift from the backend's actual
+ * limits.
  */
 export function fetchEmployees(params: FetchEmployeesParams = {}): Promise<EmployeeListResponse> {
   const query = new URLSearchParams()
   if (params.search) {
     query.set('search', params.search)
+  }
+  if (params.department) {
+    query.set('department', params.department)
+  }
+  if (params.country) {
+    query.set('country', params.country)
   }
 
   const queryString = query.toString()

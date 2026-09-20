@@ -20,11 +20,14 @@ const GENERIC_ERROR_MESSAGE = 'Something went wrong while loading employees. Ple
  * the shared client (`../api/client.ts`), which clears the session and flips
  * the app to the unauthenticated state — this hook doesn't special-case it.
  *
- * `search` (FR-3.1) is optional, already-trimmed search text; passing a new
- * value re-runs the request, and an empty string requests the unfiltered
- * listing (the same request this hook made before search existed).
+ * `search` (FR-3.1), `department` (FR-4.1), and `country` (FR-4.2) are all
+ * optional; each is already-normalized (trimmed search text, an exact
+ * department/country value or `""`). Passing a new value for any of them
+ * re-runs the request with all three combined (FR-4.4/FR-4.5) — an empty
+ * string omits that param, so all-empty requests the unfiltered listing
+ * (the same request this hook made before search/filters existed).
  */
-export function useEmployeeList(search = ''): UseEmployeeListResult {
+export function useEmployeeList(search = '', department = '', country = ''): UseEmployeeListResult {
   const [data, setData] = useState<EmployeeListResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -35,7 +38,7 @@ export function useEmployeeList(search = ''): UseEmployeeListResult {
     setIsLoading(true)
     setError(null)
 
-    fetchEmployees({ search })
+    fetchEmployees({ search, department, country })
       .then((response) => {
         if (!cancelled) {
           setData(response)
@@ -54,7 +57,7 @@ export function useEmployeeList(search = ''): UseEmployeeListResult {
     return () => {
       cancelled = true
     }
-  }, [search, attempt])
+  }, [search, department, country, attempt])
 
   const retry = useCallback(() => setAttempt((count) => count + 1), [])
 

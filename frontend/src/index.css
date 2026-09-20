@@ -157,13 +157,19 @@ main {
   font-weight: 600;
 }
 
-.field input {
+.field input,
+.field select {
   padding: 8px 10px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg);
   color: var(--text);
   font: inherit;
+}
+
+.field select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .auth-card button[type='submit'] {
@@ -227,6 +233,36 @@ main {
 .employee-search button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+.employee-filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.employee-filters .field {
+  max-width: 220px;
+}
+
+.employee-filters button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  height: fit-content;
+}
+
+.employee-filters__notice {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
 }
 
 .employee-table-scroll {

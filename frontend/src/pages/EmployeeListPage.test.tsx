@@ -1,9 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as analyticsApi from '../api/analytics'
 import { ApiError } from '../api/client'
 import * as employeesApi from '../api/employees'
+import type { SalaryStatistics } from '../types/analytics'
 import type { EmployeeListResponse } from '../types/employee'
 import { EmployeeListPage } from './EmployeeListPage'
 
@@ -64,7 +66,65 @@ const fullListResponse: EmployeeListResponse = {
   has_next: false,
 }
 
+const filterOptionsResponse: SalaryStatistics = {
+  overall: [],
+  by_department: [
+    {
+      department: 'Engineering',
+      currency: 'GBP',
+      count: 1,
+      average: '95000.00',
+      minimum: '95000.00',
+      maximum: '95000.00',
+    },
+    // Same department, a second currency — verifies de-duplication in
+    // `useEmployeeFilterOptions` (a department/country appears once per
+    // currency group in the raw statistics response).
+    {
+      department: 'Engineering',
+      currency: 'USD',
+      count: 1,
+      average: '120000.00',
+      minimum: '120000.00',
+      maximum: '120000.00',
+    },
+    {
+      department: 'Research',
+      currency: 'USD',
+      count: 1,
+      average: '105000.00',
+      minimum: '105000.00',
+      maximum: '105000.00',
+    },
+  ],
+  by_country: [
+    {
+      country: 'United Kingdom',
+      currency: 'GBP',
+      count: 1,
+      average: '95000.00',
+      minimum: '95000.00',
+      maximum: '95000.00',
+    },
+    {
+      country: 'United States',
+      currency: 'USD',
+      count: 1,
+      average: '105000.00',
+      minimum: '105000.00',
+      maximum: '105000.00',
+    },
+  ],
+}
+
 describe('EmployeeListPage', () => {
+  beforeEach(() => {
+    // Every test exercises the employee listing; filter dropdown options
+    // (sourced from `api/analytics.ts`) are a separate concern, so default
+    // them here rather than repeating this mock in every test.
+    vi.spyOn(analyticsApi, 'fetchSalaryStatistics').mockResolvedValue(filterOptionsResponse)
+  })
+
   afterEach(() => {
     vi.restoreAllMocks()
   })
@@ -83,10 +143,11 @@ describe('EmployeeListPage', () => {
     renderPage()
 
     await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
-    expect(screen.getByText('Engineering')).toBeInTheDocument()
-    expect(screen.getByText('United Kingdom')).toBeInTheDocument()
-    expect(screen.getByText(/GBP/)).toBeInTheDocument()
-    expect(screen.getByText(/95,000\.00/)).toBeInTheDocument()
+    const table = screen.getByRole('table')
+    expect(within(table).getByText('Engineering')).toBeInTheDocument()
+    expect(within(table).getByText('United Kingdom')).toBeInTheDocument()
+    expect(within(table).getByText(/GBP/)).toBeInTheDocument()
+    expect(within(table).getByText(/95,000\.00/)).toBeInTheDocument()
   })
 
   it('shows a clear, accessible empty state when the API returns no employees', async () => {
@@ -138,7 +199,9 @@ describe('EmployeeListPage', () => {
     await user.type(screen.getByLabelText('Search employees'), 'Lovel')
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
-    await waitFor(() => expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel' }))
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '' }),
+    )
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument()
   })
@@ -154,7 +217,9 @@ describe('EmployeeListPage', () => {
     await user.type(screen.getByLabelText('Search employees'), 'EMP-001')
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
-    await waitFor(() => expect(spy).toHaveBeenLastCalledWith({ search: 'EMP-001' }))
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: 'EMP-001', department: '', country: '' }),
+    )
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
   })
 
@@ -169,7 +234,9 @@ describe('EmployeeListPage', () => {
     await user.type(screen.getByLabelText('Search employees'), 'ada')
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
-    await waitFor(() => expect(spy).toHaveBeenLastCalledWith({ search: 'ada' }))
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: 'ada', department: '', country: '' }),
+    )
   })
 
   it('trims leading/trailing whitespace before sending the search value', async () => {
@@ -183,7 +250,9 @@ describe('EmployeeListPage', () => {
     await user.type(screen.getByLabelText('Search employees'), '  Ada  ')
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
-    await waitFor(() => expect(spy).toHaveBeenLastCalledWith({ search: 'Ada' }))
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Ada', department: '', country: '' }),
+    )
     expect(screen.getByLabelText('Search employees')).toHaveValue('Ada')
   })
 
@@ -218,7 +287,9 @@ describe('EmployeeListPage', () => {
     spy.mockResolvedValueOnce(fullListResponse)
     await user.click(screen.getByRole('button', { name: 'Clear search' }))
 
-    await waitFor(() => expect(spy).toHaveBeenLastCalledWith({ search: '' }))
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: '' }),
+    )
     expect(await screen.findByText('Grace Hopper')).toBeInTheDocument()
     expect(screen.getByLabelText('Search employees')).toHaveValue('')
   })
@@ -265,5 +336,276 @@ describe('EmployeeListPage', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
     expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  })
+
+  it('renders department and country filter dropdowns, with accessible labels and visible options', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    const departmentSelect = await screen.findByLabelText('Department')
+    const countrySelect = screen.getByLabelText('Country')
+
+    expect(within(departmentSelect).getByText('All departments')).toBeInTheDocument()
+    expect(within(departmentSelect).getByText('Engineering')).toBeInTheDocument()
+    expect(within(departmentSelect).getByText('Research')).toBeInTheDocument()
+    expect(within(countrySelect).getByText('All countries')).toBeInTheDocument()
+    expect(within(countrySelect).getByText('United Kingdom')).toBeInTheDocument()
+    expect(within(countrySelect).getByText('United States')).toBeInTheDocument()
+
+    // "Engineering" appears once per currency in the raw statistics
+    // response (fixture has GBP and USD) but must be de-duplicated to a
+    // single option.
+    expect(within(departmentSelect).getAllByText('Engineering')).toHaveLength(1)
+    expect(within(departmentSelect).getAllByRole('option')).toHaveLength(3)
+  })
+
+  it('filters by department only and sends the correct query parameter', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: 'Engineering', country: '' }),
+    )
+    expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
+    expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Department')).toHaveValue('Engineering')
+  })
+
+  it('filters by country only and sends the correct query parameter', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Country')
+
+    const oneUsEmployeeResponse: EmployeeListResponse = {
+      ...oneEmployeeResponse,
+      items: [fullListResponse.items[1]],
+    }
+    spy.mockResolvedValueOnce(oneUsEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Country'), 'United States')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: 'United States' }),
+    )
+    expect(await screen.findByText('Grace Hopper')).toBeInTheDocument()
+    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument()
+  })
+
+  it('combines department and country filters', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: 'Engineering', country: '' }),
+    )
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: '',
+        department: 'Engineering',
+        country: 'United Kingdom',
+      }),
+    )
+  })
+
+  it('combines search with a department filter', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.type(screen.getByLabelText('Search employees'), 'Lovel')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '' }),
+    )
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: 'Engineering', country: '' }),
+    )
+  })
+
+  it('combines search with a country filter', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Country')
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.type(screen.getByLabelText('Search employees'), 'Lovel')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '' }),
+    )
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: 'Lovel',
+        department: '',
+        country: 'United Kingdom',
+      }),
+    )
+  })
+
+  it('combines search, department, and country together', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.type(screen.getByLabelText('Search employees'), 'Lovel')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+    await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: 'Lovel',
+        department: 'Engineering',
+        country: 'United Kingdom',
+      }),
+    )
+  })
+
+  it('clears a single filter by selecting "All" for it, restoring the other active criteria', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+    await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: '',
+        department: 'Engineering',
+        country: 'United Kingdom',
+      }),
+    )
+
+    spy.mockResolvedValueOnce(fullListResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'All departments')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: 'United Kingdom' }),
+    )
+    expect(screen.getByLabelText('Department')).toHaveValue('')
+    expect(screen.getByLabelText('Country')).toHaveValue('United Kingdom')
+  })
+
+  it('clears all filters via the "Clear filters" action, without affecting search', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.type(screen.getByLabelText('Search employees'), 'Lovel')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+    await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.click(screen.getByRole('button', { name: 'Clear filters' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '' }),
+    )
+    expect(screen.getByLabelText('Department')).toHaveValue('')
+    expect(screen.getByLabelText('Country')).toHaveValue('')
+    expect(screen.getByLabelText('Search employees')).toHaveValue('Lovel')
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+  })
+
+  it('shows a clear, accessible message when a filter combination has no matching employees', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValueOnce(emptyResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+
+    await waitFor(() => expect(screen.getByText(/no employees match/i)).toBeInTheDocument())
+    expect(screen.getByText(/department "Engineering"/)).toBeInTheDocument()
+  })
+
+  it('shows a safe, accessible error state when a filtered request fails', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockRejectedValueOnce(new ApiError(500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.'))
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  })
+
+  it('disables the filter selects while filter options are loading, without blocking the employee listing', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+    vi.spyOn(analyticsApi, 'fetchSalaryStatistics').mockReturnValue(new Promise(() => {}))
+
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    expect(screen.getByLabelText('Department')).toBeDisabled()
+    expect(screen.getByLabelText('Country')).toBeDisabled()
+  })
+
+  it('shows a non-blocking notice, and still lists employees, when filter options fail to load', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+    vi.spyOn(analyticsApi, 'fetchSalaryStatistics').mockRejectedValue(
+      new ApiError(500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.'),
+    )
+
+    renderPage()
+
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Department')).not.toBeDisabled()
   })
 })

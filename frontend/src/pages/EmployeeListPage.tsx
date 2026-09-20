@@ -2,17 +2,20 @@ import { useState } from 'react'
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingIndicator } from '../components/common/LoadingIndicator'
+import { EmployeeFilters } from '../components/employee/EmployeeFilters'
 import { EmployeeSearch } from '../components/employee/EmployeeSearch'
 import { EmployeeTable } from '../components/employee/EmployeeTable'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
+import { useEmployeeFilterOptions } from '../hooks/useEmployeeFilterOptions'
 import { useEmployeeList } from '../hooks/useEmployeeList'
 
 /**
  * Employee listing page (`docs/requirements.md` FR-1.3, Acceptance
- * Criterion 8.1), with search by name or employee ID (FR-3.1-FR-3.3).
- * Filtering, sorting, and interactive pagination are intentionally out of
- * scope for this page in this commit; it shows one page of employees using
- * the backend's default pagination.
+ * Criterion 8.1), with search by name or employee ID (FR-3.1-FR-3.3) and
+ * department/country filters (FR-4.1/FR-4.2/FR-4.4). Salary-range filtering,
+ * sorting, and interactive pagination are intentionally out of scope for
+ * this page in this commit; it shows one page of employees using the
+ * backend's default pagination.
  */
 export function EmployeeListPage() {
   useDocumentTitle('Employees - PayScope')
@@ -20,11 +23,21 @@ export function EmployeeListPage() {
   // `searchInput` is the live text in the field; `appliedSearch` is what was
   // last submitted and actually sent to the backend (FR-3.1). Keeping them
   // separate means typing never triggers a request — only submitting
-  // (Search/Clear) does.
+  // (Search/Clear) does. `department`/`country` apply immediately on
+  // selection, since choosing a dropdown value is already one discrete
+  // action, unlike free-text keystrokes.
   const [searchInput, setSearchInput] = useState('')
   const [appliedSearch, setAppliedSearch] = useState('')
+  const [department, setDepartment] = useState('')
+  const [country, setCountry] = useState('')
 
-  const { data, isLoading, error, retry } = useEmployeeList(appliedSearch)
+  const { data, isLoading, error, retry } = useEmployeeList(appliedSearch, department, country)
+  const {
+    departments,
+    countries,
+    isLoading: isLoadingFilterOptions,
+    error: filterOptionsError,
+  } = useEmployeeFilterOptions()
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 0
 
@@ -39,6 +52,11 @@ export function EmployeeListPage() {
     setAppliedSearch('')
   }
 
+  function handleClearFilters() {
+    setDepartment('')
+    setCountry('')
+  }
+
   return (
     <section aria-labelledby="employee-list-heading">
       <h1 id="employee-list-heading">Employees</h1>
@@ -48,6 +66,18 @@ export function EmployeeListPage() {
         onChange={setSearchInput}
         onSubmit={handleSearchSubmit}
         onClear={handleSearchClear}
+      />
+
+      <EmployeeFilters
+        departments={departments}
+        countries={countries}
+        isLoadingOptions={isLoadingFilterOptions}
+        optionsError={filterOptionsError}
+        department={department}
+        country={country}
+        onDepartmentChange={setDepartment}
+        onCountryChange={setCountry}
+        onClearAll={handleClearFilters}
       />
 
       {isLoading ? (
@@ -63,10 +93,18 @@ export function EmployeeListPage() {
           </p>
         </>
       ) : (
-        <EmptyState
-          message={appliedSearch ? `No employees match "${appliedSearch}".` : 'No employees found.'}
-        />
+        <EmptyState message={describeEmptyResult(appliedSearch, department, country)} />
       )}
     </section>
   )
+}
+
+/** Builds an accessible, specific "no results" message reflecting whichever of search/department/country are active. */
+function describeEmptyResult(search: string, department: string, country: string): string {
+  const criteria: string[] = []
+  if (search) criteria.push(`search "${search}"`)
+  if (department) criteria.push(`department "${department}"`)
+  if (country) criteria.push(`country "${country}"`)
+
+  return criteria.length > 0 ? `No employees match ${criteria.join(' and ')}.` : 'No employees found.'
 }
