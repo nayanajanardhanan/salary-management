@@ -19,8 +19,12 @@ const GENERIC_ERROR_MESSAGE = 'Something went wrong while loading employees. Ple
  * itself (`docs/architecture.md` Section 5.4). A `401` is already handled by
  * the shared client (`../api/client.ts`), which clears the session and flips
  * the app to the unauthenticated state — this hook doesn't special-case it.
+ *
+ * `search` (FR-3.1) is optional, already-trimmed search text; passing a new
+ * value re-runs the request, and an empty string requests the unfiltered
+ * listing (the same request this hook made before search existed).
  */
-export function useEmployeeList(): UseEmployeeListResult {
+export function useEmployeeList(search = ''): UseEmployeeListResult {
   const [data, setData] = useState<EmployeeListResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -31,7 +35,7 @@ export function useEmployeeList(): UseEmployeeListResult {
     setIsLoading(true)
     setError(null)
 
-    fetchEmployees()
+    fetchEmployees({ search })
       .then((response) => {
         if (!cancelled) {
           setData(response)
@@ -50,7 +54,7 @@ export function useEmployeeList(): UseEmployeeListResult {
     return () => {
       cancelled = true
     }
-  }, [attempt])
+  }, [search, attempt])
 
   const retry = useCallback(() => setAttempt((count) => count + 1), [])
 

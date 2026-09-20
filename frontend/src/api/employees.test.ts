@@ -41,4 +41,28 @@ describe('fetchEmployees', () => {
     const headers = new Headers(requestInit?.headers)
     expect(headers.get('Authorization')).toBe('Bearer test-token')
   })
+
+  it('includes the search query parameter when a search value is given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ search: 'Ada' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.pathname).toMatch(/\/api\/v1\/employees$/)
+    expect(url.searchParams.get('search')).toBe('Ada')
+  })
+
+  it('omits the search query parameter when no search value is given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ search: '' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees$/)
+  })
 })
