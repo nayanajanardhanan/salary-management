@@ -1,6 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.employee import EmploymentStatus
+from app.schemas.salary import SalaryRead
 
 
 class EmployeeCreate(BaseModel):
@@ -102,3 +103,21 @@ class EmployeeListResponse(BaseModel):
     page_size: int
     total: int
     has_next: bool
+
+
+class EmployeeSalaryDetails(BaseModel):
+    """An employee's core details together with their current salary.
+
+    Nests the existing `EmployeeRead`/`SalaryRead` schemas unchanged,
+    rather than flattening their fields into one object, so employee data
+    and salary data stay clearly distinguished — each key's shape is
+    exactly what `GET /employees/{id}` and `GET /employees/{id}/salary`
+    already return on their own. `salary` is not `Optional`: an employee
+    with no salary record is a `404` (see the `/details` route), matching
+    the existing behavior of `GET /employees/{id}/salary` and
+    `GET /employees/{id}/salary/summary` rather than introducing a third
+    convention for the same "no salary yet" case.
+    """
+
+    employee: EmployeeRead
+    salary: SalaryRead

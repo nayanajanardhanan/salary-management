@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models.employee import Employee
@@ -61,6 +61,25 @@ def get_employee(session: Session, employee_id: int) -> Employee | None:
     running a fresh `SELECT` every time.
     """
     return session.get(Employee, employee_id)
+
+
+def get_employee_with_salary(session: Session, employee_id: int) -> Employee | None:
+    """Return the employee with `employee_id`, with `.salary` eagerly loaded.
+
+    Fetches the employee and its salary in a single SQL query (`joinedload`
+    on the one-to-one `Employee.salary` relationship) rather than the two
+    separate round-trips `get_employee` plus
+    `salary_service.get_salary_for_employee` would take — the exact
+    "employee and their salary" scenario `docs/architecture.md` Section 9
+    calls out for eager loading. `employee.salary` is `None` if the
+    employee has no salary record, but accessing it never triggers a
+    further lazy-load query — it's already populated from this same
+    query.
+    """
+    statement = (
+        select(Employee).where(Employee.id == employee_id).options(joinedload(Employee.salary))
+    )
+    return session.execute(statement).scalar_one_or_none()
 
 
 def get_employee_by_code(session: Session, employee_code: str) -> Employee | None:

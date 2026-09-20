@@ -6,7 +6,13 @@ from app.core.errors import NotFoundError
 from app.db.session import get_db
 from app.models.employee import Employee
 from app.models.salary import Salary
-from app.schemas.employee import EmployeeCreate, EmployeeListResponse, EmployeeRead, EmployeeUpdate
+from app.schemas.employee import (
+    EmployeeCreate,
+    EmployeeListResponse,
+    EmployeeRead,
+    EmployeeSalaryDetails,
+    EmployeeUpdate,
+)
 from app.schemas.error import ErrorResponse
 from app.schemas.salary import (
     SalaryCalculatedValues,
@@ -118,6 +124,48 @@ def get_employee(
     employee = _get_employee_or_404(db, employee_id)
 
     return EmployeeRead.model_validate(employee)
+
+
+@router.get(
+    "/{employee_id}/details",
+    response_model=EmployeeSalaryDetails,
+    responses={
+        404: {
+            "model": ErrorResponse,
+            "description": "Employee not found, or the employee has no salary record",
+        },
+        422: {"model": ErrorResponse, "description": "Invalid employee_id"},
+    },
+)
+def get_employee_details(
+    employee_id: int = Path(..., description="The employee's numeric id."),
+    db: Session = Depends(get_db),
+) -> EmployeeSalaryDetails:
+    """Retrieve an employee's core details together with their current salary.
+
+    Raises a `404` if no employee with `employee_id` exists, or if that
+    employee exists but has no associated salary record — matching
+    `GET .../salary` and `GET .../salary/summary`'s behavior, rather than
+    inventing a different convention for the "no salary yet" case. Fetches
+    the employee and its salary in a single query
+    (`employee_service.get_employee_with_salary`, via `joinedload`) instead
+    of two separate lookups.
+    """
+    employee = employee_service.get_employee_with_salary(db, employee_id)
+    if employee is None:
+        raise NotFoundError(
+            code="EMPLOYEE_NOT_FOUND", message=f"Employee {employee_id} not found"
+        )
+    if employee.salary is None:
+        raise NotFoundError(
+            code="SALARY_NOT_FOUND",
+            message=f"No salary record found for employee {employee_id}",
+        )
+
+    return EmployeeSalaryDetails(
+        employee=EmployeeRead.model_validate(employee),
+        salary=SalaryRead.model_validate(employee.salary),
+    )
 
 
 @router.patch(
