@@ -67,6 +67,30 @@ const fullListResponse: EmployeeListResponse = {
   has_next: false,
 }
 
+const pageOneOfManyResponse: EmployeeListResponse = {
+  items: [oneEmployeeResponse.items[0]],
+  page: 1,
+  page_size: 20,
+  total: 45,
+  has_next: true,
+}
+
+const pageTwoOfManyResponse: EmployeeListResponse = {
+  items: [fullListResponse.items[1]],
+  page: 2,
+  page_size: 20,
+  total: 45,
+  has_next: true,
+}
+
+const lastPageOfManyResponse: EmployeeListResponse = {
+  items: [fullListResponse.items[1]],
+  page: 3,
+  page_size: 20,
+  total: 45,
+  has_next: false,
+}
+
 const filterOptionsResponse: SalaryStatistics = {
   overall: [
     { currency: 'GBP', count: 1, average: '95000.00', minimum: '95000.00', maximum: '95000.00' },
@@ -204,7 +228,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument()
@@ -222,7 +246,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'EMP-001', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'EMP-001', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
   })
@@ -239,7 +263,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'ada', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'ada', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
   })
 
@@ -255,7 +279,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Ada', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'Ada', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(screen.getByLabelText('Search employees')).toHaveValue('Ada')
   })
@@ -292,7 +316,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Clear search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: '', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Grace Hopper')).toBeInTheDocument()
     expect(screen.getByLabelText('Search employees')).toHaveValue('')
@@ -377,7 +401,7 @@ describe('EmployeeListPage', () => {
     await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: 'Engineering', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: '', department: 'Engineering', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument()
@@ -400,7 +424,7 @@ describe('EmployeeListPage', () => {
     await user.selectOptions(screen.getByLabelText('Country'), 'United States')
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: 'United States', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: '', department: '', country: 'United States', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Grace Hopper')).toBeInTheDocument()
     expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument()
@@ -417,13 +441,13 @@ describe('EmployeeListPage', () => {
     spy.mockResolvedValueOnce(oneEmployeeResponse)
     await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: 'Engineering', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: '', department: 'Engineering', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
 
     spy.mockResolvedValueOnce(oneEmployeeResponse)
     await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: '',
         department: 'Engineering',
         country: 'United Kingdom', currency: '', minSalary: '', maxSalary: ''
@@ -443,13 +467,13 @@ describe('EmployeeListPage', () => {
     await user.type(screen.getByLabelText('Search employees'), 'Lovel')
     await user.click(screen.getByRole('button', { name: 'Search' }))
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
 
     spy.mockResolvedValueOnce(oneEmployeeResponse)
     await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: 'Engineering', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'Lovel', department: 'Engineering', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
   })
 
@@ -465,13 +489,13 @@ describe('EmployeeListPage', () => {
     await user.type(screen.getByLabelText('Search employees'), 'Lovel')
     await user.click(screen.getByRole('button', { name: 'Search' }))
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
 
     spy.mockResolvedValueOnce(oneEmployeeResponse)
     await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: 'Lovel',
         department: '',
         country: 'United Kingdom', currency: '', minSalary: '', maxSalary: ''
@@ -494,7 +518,7 @@ describe('EmployeeListPage', () => {
     await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: 'Lovel',
         department: 'Engineering',
         country: 'United Kingdom', currency: '', minSalary: '', maxSalary: ''
@@ -514,7 +538,7 @@ describe('EmployeeListPage', () => {
     await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
     await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: '',
         department: 'Engineering',
         country: 'United Kingdom', currency: '', minSalary: '', maxSalary: ''
@@ -525,7 +549,7 @@ describe('EmployeeListPage', () => {
     await user.selectOptions(screen.getByLabelText('Department'), 'All departments')
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: 'United Kingdom', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: '', department: '', country: 'United Kingdom', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(screen.getByLabelText('Department')).toHaveValue('')
     expect(screen.getByLabelText('Country')).toHaveValue('United Kingdom')
@@ -551,7 +575,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Clear filters' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20, search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(screen.getByLabelText('Department')).toHaveValue('')
     expect(screen.getByLabelText('Country')).toHaveValue('')
@@ -641,7 +665,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: '',
         department: '',
         country: '',
@@ -667,7 +691,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: '',
         department: '',
         country: '',
@@ -693,7 +717,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: '',
         department: '',
         country: '',
@@ -717,7 +741,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: '',
         department: '',
         country: '',
@@ -829,7 +853,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: 'Lovel',
         department: '',
         country: '',
@@ -857,7 +881,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: '',
         department: 'Engineering',
         country: 'United Kingdom',
@@ -884,7 +908,7 @@ describe('EmployeeListPage', () => {
     await user.type(screen.getByLabelText('Minimum salary'), '50000')
     await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: '',
         department: 'Engineering',
         country: '',
@@ -898,7 +922,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Clear salary filter' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({
+      expect(spy).toHaveBeenLastCalledWith({ page: 1, pageSize: 20,
         search: '',
         department: 'Engineering',
         country: '',
@@ -1185,5 +1209,256 @@ describe('EmployeeListPage', () => {
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
     expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  })
+
+  it('requests the first page with the default page size on initial load', async () => {
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+
+    await waitFor(() => expect(spy).toHaveBeenCalledTimes(1))
+    expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 20 }))
+  })
+
+  it('renders accessible pagination controls showing the current page and total', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    expect(screen.getByRole('navigation', { name: 'Employee list pagination' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeInTheDocument()
+    expect(screen.getByText(/page 1 of 3/i)).toBeInTheDocument()
+    expect(screen.getByText(/45 employees total/i)).toBeInTheDocument()
+  })
+
+  it('disables the Previous button on the first page', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Next page' })).not.toBeDisabled()
+  })
+
+  it('disables the Next button when there is no next page', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(lastPageOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Previous page' })).not.toBeDisabled()
+  })
+
+  it('navigates to the next page, sending the correct page number', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    spy.mockResolvedValueOnce(pageTwoOfManyResponse)
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ page: 2, pageSize: 20 })),
+    )
+    expect(await screen.findByText('Grace Hopper')).toBeInTheDocument()
+    expect(screen.getByText(/page 2 of 3/i)).toBeInTheDocument()
+  })
+
+  it('navigates back to the previous page, sending the correct page number', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    spy.mockResolvedValueOnce(pageTwoOfManyResponse)
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(screen.getByText(/page 2 of 3/i)).toBeInTheDocument())
+
+    spy.mockResolvedValueOnce(pageOneOfManyResponse)
+    await user.click(screen.getByRole('button', { name: 'Previous page' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 20 })),
+    )
+    expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
+  })
+
+  it('preserves active search and filters while navigating between pages', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValue(pageOneOfManyResponse)
+    await user.type(screen.getByLabelText('Search employees'), 'Lovel')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+
+    spy.mockResolvedValueOnce(pageTwoOfManyResponse)
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ search: 'Lovel', department: 'Engineering', page: 2 }),
+      ),
+    )
+  })
+
+  it('preserves active sorting while navigating between pages', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    spy.mockResolvedValue(pageOneOfManyResponse)
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Last name')
+
+    spy.mockResolvedValueOnce(pageTwoOfManyResponse)
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sortBy: 'last_name', sortOrder: 'asc', page: 2 }),
+      ),
+    )
+  })
+
+  it('resets the page to 1 when search changes', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    spy.mockResolvedValueOnce(pageTwoOfManyResponse)
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(screen.getByText(/page 2 of 3/i)).toBeInTheDocument())
+
+    spy.mockResolvedValue(pageOneOfManyResponse)
+    await user.type(screen.getByLabelText('Search employees'), 'Lovel')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ search: 'Lovel', page: 1 })),
+    )
+  })
+
+  it('resets the page to 1 when a filter changes', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValueOnce(pageTwoOfManyResponse)
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(screen.getByText(/page 2 of 3/i)).toBeInTheDocument())
+
+    spy.mockResolvedValue(pageOneOfManyResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ department: 'Engineering', page: 1 }),
+      ),
+    )
+  })
+
+  it('resets the page to 1 when sorting changes', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    spy.mockResolvedValueOnce(pageTwoOfManyResponse)
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(screen.getByText(/page 2 of 3/i)).toBeInTheDocument())
+
+    spy.mockResolvedValue(pageOneOfManyResponse)
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Last name')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: 'last_name', page: 1 })),
+    )
+  })
+
+  it('resets the page to 1 when the page size changes', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    spy.mockResolvedValueOnce(pageTwoOfManyResponse)
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+    await waitFor(() => expect(screen.getByText(/page 2 of 3/i)).toBeInTheDocument())
+
+    spy.mockResolvedValue({ ...pageOneOfManyResponse, page_size: 50 })
+    await user.selectOptions(screen.getByLabelText('Employees per page'), '50')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ page: 1, pageSize: 50 })),
+    )
+  })
+
+  it('never offers a page size greater than the backend maximum of 100', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    const pageSizeSelect = screen.getByLabelText('Employees per page') as HTMLSelectElement
+    const values = Array.from(pageSizeSelect.options).map((option) => Number(option.value))
+    expect(Math.max(...values)).toBeLessThanOrEqual(100)
+  })
+
+  it('shows disabled pagination controls and a zero count when there are no matching employees', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(emptyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText(/no employees found/i)).toBeInTheDocument())
+
+    expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled()
+    expect(screen.getByText(/0 employees total/i)).toBeInTheDocument()
+  })
+
+  it('shows an accessible error state when a page-navigation request fails', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    spy.mockRejectedValueOnce(new ApiError(500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.'))
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  })
+
+  it('shows an accessible loading state while a page-navigation request is pending', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(pageOneOfManyResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument())
+
+    spy.mockReturnValueOnce(new Promise(() => {}))
+    await user.click(screen.getByRole('button', { name: 'Next page' }))
+
+    expect(screen.getByRole('status')).toHaveTextContent(/loading/i)
   })
 })

@@ -26,6 +26,10 @@ export interface EmployeeListFilters {
   sortBy?: string
   /** Sort direction, or `""` for the default order. */
   sortOrder?: SortOrder | ''
+  /** 1-indexed page number; `undefined` for the backend default (page 1). */
+  page?: number
+  /** Records per page; `undefined` for the backend default (20). */
+  pageSize?: number
 }
 
 const GENERIC_ERROR_MESSAGE = 'Something went wrong while loading employees. Please try again.'
@@ -46,7 +50,13 @@ const GENERIC_ERROR_MESSAGE = 'Something went wrong while loading employees. Ple
  * `filters` is destructured into primitive dependencies below rather than
  * used as a single dependency, so passing a fresh object literal on every
  * render (as `EmployeeListPage` does) doesn't re-run the effect unless an
- * actual value changed.
+ * actual value changed. `page`/`pageSize` are part of that same dependency
+ * list, so navigating pages re-runs the request exactly like any other
+ * criteria change, and — since the effect's own `cancelled` flag already
+ * guards every `setData`/`setError` call — a stale in-flight response from
+ * a page the user has since navigated away from can never overwrite newer
+ * results (the cleanup below flips `cancelled` before the next request
+ * starts).
  */
 export function useEmployeeList(search = '', filters: EmployeeListFilters = {}): UseEmployeeListResult {
   const {
@@ -57,6 +67,8 @@ export function useEmployeeList(search = '', filters: EmployeeListFilters = {}):
     maxSalary = '',
     sortBy = '',
     sortOrder = '',
+    page,
+    pageSize,
   } = filters
 
   const [data, setData] = useState<EmployeeListResponse | null>(null)
@@ -78,6 +90,8 @@ export function useEmployeeList(search = '', filters: EmployeeListFilters = {}):
       maxSalary,
       sortBy: sortBy || undefined,
       sortOrder: sortOrder || undefined,
+      page,
+      pageSize,
     })
       .then((response) => {
         if (!cancelled) {
@@ -97,7 +111,7 @@ export function useEmployeeList(search = '', filters: EmployeeListFilters = {}):
     return () => {
       cancelled = true
     }
-  }, [search, department, country, currency, minSalary, maxSalary, sortBy, sortOrder, attempt])
+  }, [search, department, country, currency, minSalary, maxSalary, sortBy, sortOrder, page, pageSize, attempt])
 
   const retry = useCallback(() => setAttempt((count) => count + 1), [])
 

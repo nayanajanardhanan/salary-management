@@ -211,4 +211,52 @@ describe('fetchEmployees', () => {
     expect(url.searchParams.get('sort_by')).toBe('department')
     expect(url.searchParams.get('sort_order')).toBe('asc')
   })
+
+  it('includes the page and page_size query parameters when given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ page: 2, pageSize: 50 })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.searchParams.get('page')).toBe('2')
+    expect(url.searchParams.get('page_size')).toBe('50')
+  })
+
+  it('omits the page and page_size query parameters when not given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees()
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees$/)
+  })
+
+  it('combines pagination with search, filter, and sort query parameters', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({
+      search: 'Ada',
+      department: 'Engineering',
+      sortBy: 'last_name',
+      sortOrder: 'desc',
+      page: 3,
+      pageSize: 10,
+    })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.searchParams.get('search')).toBe('Ada')
+    expect(url.searchParams.get('department')).toBe('Engineering')
+    expect(url.searchParams.get('sort_by')).toBe('last_name')
+    expect(url.searchParams.get('sort_order')).toBe('desc')
+    expect(url.searchParams.get('page')).toBe('3')
+    expect(url.searchParams.get('page_size')).toBe('10')
+  })
 })

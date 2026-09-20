@@ -42,6 +42,14 @@ export interface FetchEmployeesParams {
   sortBy?: string
   /** Sort direction; omit (or pass the backend default, `"asc"`) for the default listing order. */
   sortOrder?: SortOrder
+  /** 1-indexed page number. Omit (or pass the backend default, `1`) for the first page. */
+  page?: number
+  /**
+   * Records per page. Omit (or pass the backend default, `20`) for the
+   * default page size. Never pass more than `MAX_EMPLOYEE_PAGE_SIZE` (100,
+   * `types/employee.ts`) — the backend rejects a larger value with a `422`.
+   */
+  pageSize?: number
 }
 
 /**
@@ -49,13 +57,13 @@ export interface FetchEmployeesParams {
  * (`./client.ts`), which attaches the `Authorization` header and normalizes
  * errors — this module never calls `fetch` directly.
  *
- * Each optional param is forwarded only when non-empty, so a caller can
- * combine any subset of `search`/`department`/`country` (FR-4.4) without
- * this module needing to know which combination is active. Pagination
- * (`page`/`page_size`) is left unset so the backend's own defaults apply
- * (`page=1`, `page_size=20`; see `app.utils.pagination`), rather than this
- * module re-declaring them and risking drift from the backend's actual
- * limits.
+ * Each optional param is forwarded only when given, so a caller can combine
+ * any subset of `search`/`department`/`country`/etc (FR-4.4) without this
+ * module needing to know which combination is active. `page`/`pageSize` are
+ * likewise only sent when given — omitting them (as when no page has been
+ * requested yet) lets the backend's own defaults apply (`page=1`,
+ * `page_size=20`; see `app.utils.pagination`) rather than this module
+ * re-declaring them and risking drift from the backend's actual limits.
  */
 export function fetchEmployees(params: FetchEmployeesParams = {}): Promise<EmployeeListResponse> {
   const query = new URLSearchParams()
@@ -82,6 +90,12 @@ export function fetchEmployees(params: FetchEmployeesParams = {}): Promise<Emplo
   }
   if (params.sortOrder) {
     query.set('sort_order', params.sortOrder)
+  }
+  if (params.page !== undefined) {
+    query.set('page', String(params.page))
+  }
+  if (params.pageSize !== undefined) {
+    query.set('page_size', String(params.pageSize))
   }
 
   const queryString = query.toString()

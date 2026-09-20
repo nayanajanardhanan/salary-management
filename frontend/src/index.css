@@ -342,6 +342,42 @@ main {
   font-size: 0.9rem;
 }
 
+.employee-pagination {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.employee-pagination .field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.employee-pagination button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.employee-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.employee-pagination__summary {
+  margin: 0 0 0 auto;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .employee-table-scroll {
   overflow-x: auto;
 }

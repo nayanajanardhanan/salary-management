@@ -64,3 +64,24 @@ export const EMPLOYEE_SORT_FIELDS: ReadonlyArray<{ value: string; label: string 
 export const DEFAULT_EMPLOYEE_SORT_BY = 'id'
 /** Mirrors `app.services.employee_service.DEFAULT_SORT_ORDER`. */
 export const DEFAULT_EMPLOYEE_SORT_ORDER: SortOrder = 'asc'
+
+/** Mirrors `app.utils.pagination.DEFAULT_PAGE`. */
+export const DEFAULT_EMPLOYEE_PAGE = 1
+/** Mirrors `app.utils.pagination.DEFAULT_PAGE_SIZE`. */
+export const DEFAULT_EMPLOYEE_PAGE_SIZE = 20
+/**
+ * Mirrors `app.utils.pagination.MAX_PAGE_SIZE`. The backend rejects
+ * `page_size` above this with a `422` (`pagination_params`'s `le=MAX_PAGE_SIZE`);
+ * the frontend must never request more.
+ */
+export const MAX_EMPLOYEE_PAGE_SIZE = 100
+
+/**
+ * Page-size choices offered by the page-size selector. Unlike
+ * `EMPLOYEE_SORT_FIELDS`, this isn't a mirrored allowlist — the backend
+ * accepts any integer in `[1, MAX_EMPLOYEE_PAGE_SIZE]` (`pagination_params`),
+ * not a fixed enum — so this is a deliberately curated set of common,
+ * backend-valid values for a usable dropdown, capped at
+ * `MAX_EMPLOYEE_PAGE_SIZE` itself.
+ */
+export const EMPLOYEE_PAGE_SIZE_OPTIONS: ReadonlyArray<number> = [10, 20, 50, 100]

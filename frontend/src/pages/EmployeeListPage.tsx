@@ -3,6 +3,7 @@ import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingIndicator } from '../components/common/LoadingIndicator'
 import { EmployeeFilters } from '../components/employee/EmployeeFilters'
+import { EmployeePagination } from '../components/employee/EmployeePagination'
 import { EmployeeSearch } from '../components/employee/EmployeeSearch'
 import { EmployeeSort } from '../components/employee/EmployeeSort'
 import { EmployeeTable } from '../components/employee/EmployeeTable'
@@ -10,17 +11,20 @@ import { SalaryRangeFilter } from '../components/employee/SalaryRangeFilter'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEmployeeFilterOptions } from '../hooks/useEmployeeFilterOptions'
 import { useEmployeeList } from '../hooks/useEmployeeList'
-import { DEFAULT_EMPLOYEE_SORT_BY, DEFAULT_EMPLOYEE_SORT_ORDER } from '../types/employee'
+import {
+  DEFAULT_EMPLOYEE_PAGE,
+  DEFAULT_EMPLOYEE_PAGE_SIZE,
+  DEFAULT_EMPLOYEE_SORT_BY,
+  DEFAULT_EMPLOYEE_SORT_ORDER,
+} from '../types/employee'
 import type { SortOrder } from '../types/employee'
 
 /**
  * Employee listing page (`docs/requirements.md` FR-1.3, Acceptance
  * Criterion 8.1), with search by name or employee ID (FR-3.1-FR-3.3),
  * department/country filters (FR-4.1/FR-4.2/FR-4.4), a salary-range filter
- * scoped to one currency (FR-4.3), and sorting by any backend-supported
- * field. Interactive pagination is intentionally out of scope for this page
- * in this commit; it shows one page of employees using the backend's
- * default pagination.
+ * scoped to one currency (FR-4.3), sorting by any backend-supported field,
+ * and interactive server-side pagination (FR-5.1-FR-5.4).
  */
 export function EmployeeListPage() {
   useDocumentTitle('Employees - PayScope')
@@ -58,6 +62,14 @@ export function EmployeeListPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>(DEFAULT_EMPLOYEE_SORT_ORDER)
   const isDefaultSort = sortBy === DEFAULT_EMPLOYEE_SORT_BY && sortOrder === DEFAULT_EMPLOYEE_SORT_ORDER
 
+  // Pagination: unlike search/filters/sort, `page`/`pageSize` are always
+  // sent explicitly (never omitted at their default), since pagination is
+  // a required, always-present dimension of the list request, not an
+  // optional refinement — every request states exactly which page it's
+  // asking for.
+  const [page, setPage] = useState(DEFAULT_EMPLOYEE_PAGE)
+  const [pageSize, setPageSize] = useState(DEFAULT_EMPLOYEE_PAGE_SIZE)
+
   const { data, isLoading, error, retry } = useEmployeeList(appliedSearch, {
     department,
     country,
@@ -66,6 +78,8 @@ export function EmployeeListPage() {
     maxSalary: appliedMaxSalary,
     sortBy: isDefaultSort ? '' : sortBy,
     sortOrder: isDefaultSort ? '' : sortOrder,
+    page,
+    pageSize,
   })
   const {
     departments,
@@ -75,22 +89,33 @@ export function EmployeeListPage() {
     error: filterOptionsError,
   } = useEmployeeFilterOptions()
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 0
-
   function handleSearchSubmit() {
     const trimmed = searchInput.trim()
     setSearchInput(trimmed)
     setAppliedSearch(trimmed)
+    setPage(DEFAULT_EMPLOYEE_PAGE)
   }
 
   function handleSearchClear() {
     setSearchInput('')
     setAppliedSearch('')
+    setPage(DEFAULT_EMPLOYEE_PAGE)
+  }
+
+  function handleDepartmentChange(value: string) {
+    setDepartment(value)
+    setPage(DEFAULT_EMPLOYEE_PAGE)
+  }
+
+  function handleCountryChange(value: string) {
+    setCountry(value)
+    setPage(DEFAULT_EMPLOYEE_PAGE)
   }
 
   function handleClearFilters() {
     setDepartment('')
     setCountry('')
+    setPage(DEFAULT_EMPLOYEE_PAGE)
   }
 
   function handleSalarySubmit() {
@@ -118,6 +143,7 @@ export function EmployeeListPage() {
     setAppliedCurrency(currencyInput)
     setAppliedMinSalary(min.value)
     setAppliedMaxSalary(max.value)
+    setPage(DEFAULT_EMPLOYEE_PAGE)
   }
 
   function handleSalaryClear() {
@@ -128,11 +154,40 @@ export function EmployeeListPage() {
     setAppliedCurrency('')
     setAppliedMinSalary('')
     setAppliedMaxSalary('')
+    setPage(DEFAULT_EMPLOYEE_PAGE)
+  }
+
+  function handleSortByChange(value: string) {
+    setSortBy(value)
+    setPage(DEFAULT_EMPLOYEE_PAGE)
+  }
+
+  function handleSortOrderChange(value: SortOrder) {
+    setSortOrder(value)
+    setPage(DEFAULT_EMPLOYEE_PAGE)
   }
 
   function handleSortReset() {
     setSortBy(DEFAULT_EMPLOYEE_SORT_BY)
     setSortOrder(DEFAULT_EMPLOYEE_SORT_ORDER)
+    setPage(DEFAULT_EMPLOYEE_PAGE)
+  }
+
+  function handlePageSizeChange(value: number) {
+    setPageSize(value)
+    setPage(DEFAULT_EMPLOYEE_PAGE)
+  }
+
+  function handlePreviousPage() {
+    if (data && data.page > 1) {
+      setPage(data.page - 1)
+    }
+  }
+
+  function handleNextPage() {
+    if (data && data.has_next) {
+      setPage(data.page + 1)
+    }
   }
 
   const hasSalaryFilter =
@@ -161,8 +216,8 @@ export function EmployeeListPage() {
         optionsError={filterOptionsError}
         department={department}
         country={country}
-        onDepartmentChange={setDepartment}
-        onCountryChange={setCountry}
+        onDepartmentChange={handleDepartmentChange}
+        onCountryChange={handleCountryChange}
         onClearAll={handleClearFilters}
       />
 
@@ -184,8 +239,8 @@ export function EmployeeListPage() {
       <EmployeeSort
         sortBy={sortBy}
         sortOrder={sortOrder}
-        onSortByChange={setSortBy}
-        onSortOrderChange={setSortOrder}
+        onSortByChange={handleSortByChange}
+        onSortOrderChange={handleSortOrderChange}
         onReset={handleSortReset}
       />
 
@@ -194,13 +249,7 @@ export function EmployeeListPage() {
       ) : error ? (
         <ErrorMessage message={error} onRetry={retry} />
       ) : data && data.items.length > 0 ? (
-        <>
-          <EmployeeTable employees={data.items} />
-          <p aria-live="polite">
-            Page {data.page} of {totalPages} &middot; {data.total} employee
-            {data.total === 1 ? '' : 's'} total
-          </p>
-        </>
+        <EmployeeTable employees={data.items} />
       ) : (
         <EmptyState
           message={describeEmptyResult(
@@ -213,6 +262,15 @@ export function EmployeeListPage() {
           )}
         />
       )}
+
+      <EmployeePagination
+        page={page}
+        pageSize={pageSize}
+        data={data}
+        onPageSizeChange={handlePageSizeChange}
+        onPrevious={handlePreviousPage}
+        onNext={handleNextPage}
+      />
     </section>
   )
 }
