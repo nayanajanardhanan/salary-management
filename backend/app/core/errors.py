@@ -10,6 +10,15 @@ errors, so every error response (expected or not) shares the same shape.
 Internal details (stack traces, raw exception messages, database errors)
 are never returned to the client; unexpected exceptions are logged
 server-side and reduced to a generic message (FR-8.3, FR-8.4).
+
+Server-side logs also distinguish *expected* domain conditions (an
+`AppError`, e.g. a `404`/`409`/`422`) from *unexpected* failures (any other
+exception), per NFR 4.7: `app_error_handler` logs the former at `WARNING`
+(no traceback), `unhandled_exception_handler` logs the latter at `ERROR`
+(via `logger.exception`, with a traceback). Only non-sensitive request
+metadata (method, path, error code, status) is logged for expected errors —
+never the error's own `message`/`details`, which could echo back
+caller-supplied input.
 """
 
 import logging
@@ -109,6 +118,23 @@ def _error_response(
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """Translate an `AppError` into the standard envelope, logging it as expected.
+
+    Logged at `WARNING` (below the `ERROR`/`logger.exception` level used for
+    unexpected failures) and clearly labeled as an *expected* application
+    error, per NFR 4.7. Only the request method/path and the error's
+    `code`/`status_code` are logged — never `exc.message`/`exc.details`,
+    which may echo back caller-supplied input (e.g. an invalid field value)
+    and are already returned to the client in the response body, not fit
+    for a log line that must stay free of sensitive data.
+    """
+    logger.warning(
+        "Expected application error (not a failure) while processing %s %s: code=%s status=%s",
+        request.method,
+        request.url.path,
+        exc.code,
+        exc.status_code,
+    )
     return _error_response(exc.status_code, exc.code, exc.message, exc.details)
 
 

@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
+from app.core.errors import NotFoundError
 from app.db.session import get_db
 from app.main import app
 from app.models.employee import Employee
@@ -165,6 +166,112 @@ def test_invalid_sort_order_uses_standard_error_envelope(
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+# --- Expected vs. unexpected error logging (NFR 4.7) -----------------------
+
+
+def test_expected_app_error_is_logged_at_warning_not_error(
+    client: TestClient, db_session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="app"):
+        response = client.get("/api/v1/employees/999999")
+
+    assert response.status_code == 404
+    app_records = [record for record in caplog.records if record.name == "app"]
+    assert len(app_records) == 1
+    assert app_records[0].levelno == logging.WARNING
+    assert app_records[0].exc_info is None
+
+
+def test_expected_app_error_log_identifies_it_as_expected(
+    client: TestClient, db_session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="app"):
+        response = client.get("/api/v1/employees/999999")
+
+    assert response.status_code == 404
+    [record] = [r for r in caplog.records if r.name == "app"]
+    message = record.getMessage().lower()
+    assert "expected" in message
+    assert "unhandled" not in message
+
+
+def test_expected_app_error_log_includes_useful_context(
+    client: TestClient, db_session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="app"):
+        response = client.get("/api/v1/employees/999999")
+
+    assert response.status_code == 404
+    [record] = [r for r in caplog.records if r.name == "app"]
+    message = record.getMessage()
+    assert "GET" in message
+    assert "/api/v1/employees/999999" in message
+    assert "EMPLOYEE_NOT_FOUND" in message
+    assert "404" in message
+
+
+def test_expected_app_error_log_does_not_include_sensitive_data(
+    client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The response body's `message` may echo caller-supplied/domain detail
+
+    (here standing in for something sensitive); it must never also land in
+    the server log, which only carries method/path/code/status.
+    """
+
+    def _boom(session, employee_id):
+        raise NotFoundError(
+            code="EMPLOYEE_NOT_FOUND",
+            message="Employee salary 999999.99 USD for Jane Confidential not found",
+        )
+
+    monkeypatch.setattr(employee_service, "get_employee", _boom)
+
+    with caplog.at_level(logging.WARNING, logger="app"):
+        response = client.get("/api/v1/employees/1")
+
+    assert response.status_code == 404
+    assert "Jane Confidential" in response.json()["error"]["message"]
+
+    app_log_text = "\n".join(record.getMessage() for record in caplog.records if record.name == "app")
+    assert "Jane Confidential" not in app_log_text
+    assert "999999.99" not in app_log_text
+    assert "USD" not in app_log_text
+
+
+def test_unexpected_error_still_logged_at_error_with_traceback_and_distinct_wording(
+    unsafe_client: TestClient,
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The other half of NFR 4.7: unexpected failures stay distinguishable
+
+    from expected ones — `ERROR` level, a traceback, and wording that never
+    claims to be "expected".
+    """
+
+    def _boom(session, employee_id):
+        raise RuntimeError("simulated database failure")
+
+    monkeypatch.setattr(employee_service, "get_employee", _boom)
+
+    with caplog.at_level(logging.WARNING, logger="app"):
+        response = unsafe_client.get("/api/v1/employees/1")
+
+    assert response.status_code == 500
+    app_records = [record for record in caplog.records if record.name == "app"]
+    assert len(app_records) == 1
+    record = app_records[0]
+    assert record.levelno == logging.ERROR
+    assert record.exc_info is not None
+    assert "unhandled" in record.getMessage().lower()
+    assert "expected" not in record.getMessage().lower()
 
 
 # --- Unexpected errors (bare Exception -> unhandled_exception_handler) ----
