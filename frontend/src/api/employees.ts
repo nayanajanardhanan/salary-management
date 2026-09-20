@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import type { EmployeeListResponse } from '../types/employee'
+import type { EmployeeListResponse, SortOrder } from '../types/employee'
 
 const EMPLOYEES_ENDPOINT = '/api/v1/employees'
 
@@ -33,6 +33,15 @@ export interface FetchEmployeesParams {
   minSalary?: string
   /** Maximum salary amount, inclusive (FR-4.3). Same decimal-string rationale as `minSalary`. */
   maxSalary?: string
+  /**
+   * Sort field, checked by the backend against its `SORTABLE_FIELDS`
+   * allowlist (`app.services.employee_service`; mirrored in
+   * `types/employee.ts`'s `EMPLOYEE_SORT_FIELDS`). Omit (or pass the
+   * backend default, `"id"`) for the default listing order.
+   */
+  sortBy?: string
+  /** Sort direction; omit (or pass the backend default, `"asc"`) for the default listing order. */
+  sortOrder?: SortOrder
 }
 
 /**
@@ -67,6 +76,12 @@ export function fetchEmployees(params: FetchEmployeesParams = {}): Promise<Emplo
   }
   if (params.maxSalary) {
     query.set('max_salary', params.maxSalary)
+  }
+  if (params.sortBy) {
+    query.set('sort_by', params.sortBy)
+  }
+  if (params.sortOrder) {
+    query.set('sort_order', params.sortOrder)
   }
 
   const queryString = query.toString()

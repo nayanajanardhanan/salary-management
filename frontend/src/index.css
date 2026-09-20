@@ -312,6 +312,36 @@ main {
   border-color: var(--error-border);
 }
 
+.employee-sort {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.employee-sort .field {
+  max-width: 220px;
+}
+
+.employee-sort button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  height: fit-content;
+}
+
+.employee-sort__summary {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 .employee-table-scroll {
   overflow-x: auto;
 }

@@ -163,4 +163,52 @@ describe('fetchEmployees', () => {
     expect(url.searchParams.get('min_salary')).toBe('50000')
     expect(url.searchParams.get('max_salary')).toBe('100000')
   })
+
+  it('includes the sort_by and sort_order query parameters when given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ sortBy: 'last_name', sortOrder: 'desc' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.searchParams.get('sort_by')).toBe('last_name')
+    expect(url.searchParams.get('sort_order')).toBe('desc')
+  })
+
+  it('omits the sort_by and sort_order query parameters when not given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees()
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees$/)
+  })
+
+  it('combines sorting with search and filter query parameters', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({
+      search: 'Ada',
+      department: 'Engineering',
+      currency: 'GBP',
+      minSalary: '50000',
+      sortBy: 'department',
+      sortOrder: 'asc',
+    })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.searchParams.get('search')).toBe('Ada')
+    expect(url.searchParams.get('department')).toBe('Engineering')
+    expect(url.searchParams.get('currency')).toBe('GBP')
+    expect(url.searchParams.get('min_salary')).toBe('50000')
+    expect(url.searchParams.get('sort_by')).toBe('department')
+    expect(url.searchParams.get('sort_order')).toBe('asc')
+  })
 })

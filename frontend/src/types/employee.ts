@@ -35,3 +35,32 @@ export interface EmployeeListResponse {
   total: number
   has_next: boolean
 }
+
+/** Mirrors `app.utils.sorting.SortOrder`. */
+export type SortOrder = 'asc' | 'desc'
+
+/**
+ * Mirrors `app.services.employee_service.SORTABLE_FIELDS`'s keys, each with
+ * a human-readable label. There is no endpoint that exposes this allowlist
+ * at runtime (unlike department/country/currency, which are sourced from
+ * `hooks/useEmployeeFilterOptions.ts`) — it's a fixed part of the API
+ * contract, not data, so it's mirrored here the same way `EmploymentStatus`
+ * above mirrors a backend enum. Keep in sync with the backend allowlist by
+ * hand; sending a `sort_by` outside it is rejected by the backend with a
+ * `422` (`app.api.v1.dependencies.employee_sort_params`).
+ */
+export const EMPLOYEE_SORT_FIELDS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'id', label: 'Employee record ID' },
+  { value: 'employee_code', label: 'Employee code' },
+  { value: 'first_name', label: 'First name' },
+  { value: 'last_name', label: 'Last name' },
+  { value: 'department', label: 'Department' },
+  { value: 'country', label: 'Country' },
+  { value: 'job_title', label: 'Job title' },
+  { value: 'employment_status', label: 'Employment status' },
+]
+
+/** Mirrors `app.services.employee_service.DEFAULT_SORT_BY`. */
+export const DEFAULT_EMPLOYEE_SORT_BY = 'id'
+/** Mirrors `app.services.employee_service.DEFAULT_SORT_ORDER`. */
+export const DEFAULT_EMPLOYEE_SORT_ORDER: SortOrder = 'asc'

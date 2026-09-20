@@ -6,6 +6,7 @@ import * as analyticsApi from '../api/analytics'
 import { ApiError } from '../api/client'
 import * as employeesApi from '../api/employees'
 import type { SalaryStatistics } from '../types/analytics'
+import { EMPLOYEE_SORT_FIELDS } from '../types/employee'
 import type { EmployeeListResponse } from '../types/employee'
 import { EmployeeListPage } from './EmployeeListPage'
 
@@ -958,5 +959,231 @@ describe('EmployeeListPage', () => {
     await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
 
     expect(screen.getByText(/filtering salary amounts in GBP only/i)).toBeInTheDocument()
+  })
+
+  it('renders sort controls with accessible labels, defaulting to the backend default sort', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    const sortFieldSelect = screen.getByLabelText('Sort by')
+    const sortOrderSelect = screen.getByLabelText('Sort order')
+
+    for (const field of EMPLOYEE_SORT_FIELDS) {
+      expect(within(sortFieldSelect).getByText(field.label)).toBeInTheDocument()
+    }
+    expect(within(sortOrderSelect).getByText('Ascending')).toBeInTheDocument()
+    expect(within(sortOrderSelect).getByText('Descending')).toBeInTheDocument()
+    expect(sortFieldSelect).toHaveValue('id')
+    expect(sortOrderSelect).toHaveValue('asc')
+    expect(screen.queryByRole('button', { name: 'Reset sorting' })).not.toBeInTheDocument()
+  })
+
+  it.each(EMPLOYEE_SORT_FIELDS.filter((field) => field.value !== 'id'))(
+    'sorts by $label ascending, sending sort_by=$value',
+    async ({ value, label }) => {
+      const user = userEvent.setup()
+      const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+      renderPage()
+      await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+      await user.selectOptions(screen.getByLabelText('Sort by'), label)
+
+      await waitFor(() =>
+        expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: value, sortOrder: 'asc' })),
+      )
+    },
+  )
+
+  it('sorts by the default field (Employee record ID) in descending order', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    await user.selectOptions(screen.getByLabelText('Sort order'), 'Descending')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(expect.objectContaining({ sortBy: 'id', sortOrder: 'desc' })),
+    )
+  })
+
+  it('sorts by a chosen field in descending order', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Last name')
+    await user.selectOptions(screen.getByLabelText('Sort order'), 'Descending')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sortBy: 'last_name', sortOrder: 'desc' }),
+      ),
+    )
+  })
+
+  it('combines sorting with search, preserving the search term', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.type(screen.getByLabelText('Search employees'), 'Lovel')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Last name')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(
+        expect.objectContaining({ search: 'Lovel', sortBy: 'last_name', sortOrder: 'asc' }),
+      ),
+    )
+  })
+
+  it('combines sorting with department and country filters', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+    await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Department')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          department: 'Engineering',
+          country: 'United Kingdom',
+          sortBy: 'department',
+          sortOrder: 'asc',
+        }),
+      ),
+    )
+  })
+
+  it('combines sorting with a salary-range filter', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), '50000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'First name')
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          currency: 'GBP',
+          minSalary: '50000',
+          sortBy: 'first_name',
+          sortOrder: 'asc',
+        }),
+      ),
+    )
+  })
+
+  it('resets sorting to the default via "Reset sorting", omitting sort query parameters', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    expect(screen.queryByRole('button', { name: 'Reset sorting' })).not.toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Last name')
+    await user.selectOptions(screen.getByLabelText('Sort order'), 'Descending')
+    expect(screen.getByRole('button', { name: 'Reset sorting' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Reset sorting' }))
+
+    await waitFor(() => {
+      const lastCallArgs = spy.mock.calls[spy.mock.calls.length - 1][0]
+      expect(lastCallArgs?.sortBy).toBeUndefined()
+      expect(lastCallArgs?.sortOrder).toBeUndefined()
+    })
+    expect(screen.getByLabelText('Sort by')).toHaveValue('id')
+    expect(screen.getByLabelText('Sort order')).toHaveValue('asc')
+    expect(screen.queryByRole('button', { name: 'Reset sorting' })).not.toBeInTheDocument()
+  })
+
+  it('preserves other active filters when sorting is reset to default', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Department')
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Last name')
+
+    await user.click(screen.getByRole('button', { name: 'Reset sorting' }))
+
+    await waitFor(() => {
+      const lastCallArgs = spy.mock.calls[spy.mock.calls.length - 1][0]
+      expect(lastCallArgs?.department).toBe('Engineering')
+      expect(lastCallArgs?.sortBy).toBeUndefined()
+    })
+    expect(screen.getByLabelText('Department')).toHaveValue('Engineering')
+  })
+
+  it('clearly communicates the active sort field and direction', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    expect(screen.getByText(/sorted by employee record id \(ascending\)/i)).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Last name')
+    await user.selectOptions(screen.getByLabelText('Sort order'), 'Descending')
+
+    expect(screen.getByText(/sorted by last name \(descending\)/i)).toBeInTheDocument()
+  })
+
+  it('shows an accessible loading state while a sort-triggered request is pending', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    spy.mockReturnValueOnce(new Promise(() => {}))
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Last name')
+
+    expect(screen.getByRole('status')).toHaveTextContent(/loading/i)
+  })
+
+  it('shows a safe, accessible error state when a sort-triggered request fails', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    spy.mockRejectedValueOnce(new ApiError(500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.'))
+    await user.selectOptions(screen.getByLabelText('Sort by'), 'Last name')
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
   })
 })

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchEmployees } from '../api/employees'
 import { ApiError } from '../api/client'
-import type { EmployeeListResponse } from '../types/employee'
+import type { EmployeeListResponse, SortOrder } from '../types/employee'
 
 interface UseEmployeeListResult {
   data: EmployeeListResponse | null
@@ -22,6 +22,10 @@ export interface EmployeeListFilters {
   minSalary?: string
   /** Maximum salary, inclusive (FR-4.3) — an already-validated numeric string, or `""`. */
   maxSalary?: string
+  /** Sort field, from the backend's `SORTABLE_FIELDS` allowlist, or `""` for the default order. */
+  sortBy?: string
+  /** Sort direction, or `""` for the default order. */
+  sortOrder?: SortOrder | ''
 }
 
 const GENERIC_ERROR_MESSAGE = 'Something went wrong while loading employees. Please try again.'
@@ -45,7 +49,15 @@ const GENERIC_ERROR_MESSAGE = 'Something went wrong while loading employees. Ple
  * actual value changed.
  */
 export function useEmployeeList(search = '', filters: EmployeeListFilters = {}): UseEmployeeListResult {
-  const { department = '', country = '', currency = '', minSalary = '', maxSalary = '' } = filters
+  const {
+    department = '',
+    country = '',
+    currency = '',
+    minSalary = '',
+    maxSalary = '',
+    sortBy = '',
+    sortOrder = '',
+  } = filters
 
   const [data, setData] = useState<EmployeeListResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -57,7 +69,16 @@ export function useEmployeeList(search = '', filters: EmployeeListFilters = {}):
     setIsLoading(true)
     setError(null)
 
-    fetchEmployees({ search, department, country, currency, minSalary, maxSalary })
+    fetchEmployees({
+      search,
+      department,
+      country,
+      currency,
+      minSalary,
+      maxSalary,
+      sortBy: sortBy || undefined,
+      sortOrder: sortOrder || undefined,
+    })
       .then((response) => {
         if (!cancelled) {
           setData(response)
@@ -76,7 +97,7 @@ export function useEmployeeList(search = '', filters: EmployeeListFilters = {}):
     return () => {
       cancelled = true
     }
-  }, [search, department, country, currency, minSalary, maxSalary, attempt])
+  }, [search, department, country, currency, minSalary, maxSalary, sortBy, sortOrder, attempt])
 
   const retry = useCallback(() => setAttempt((count) => count + 1), [])
 

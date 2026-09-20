@@ -4,19 +4,23 @@ import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingIndicator } from '../components/common/LoadingIndicator'
 import { EmployeeFilters } from '../components/employee/EmployeeFilters'
 import { EmployeeSearch } from '../components/employee/EmployeeSearch'
+import { EmployeeSort } from '../components/employee/EmployeeSort'
 import { EmployeeTable } from '../components/employee/EmployeeTable'
 import { SalaryRangeFilter } from '../components/employee/SalaryRangeFilter'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEmployeeFilterOptions } from '../hooks/useEmployeeFilterOptions'
 import { useEmployeeList } from '../hooks/useEmployeeList'
+import { DEFAULT_EMPLOYEE_SORT_BY, DEFAULT_EMPLOYEE_SORT_ORDER } from '../types/employee'
+import type { SortOrder } from '../types/employee'
 
 /**
  * Employee listing page (`docs/requirements.md` FR-1.3, Acceptance
  * Criterion 8.1), with search by name or employee ID (FR-3.1-FR-3.3),
- * department/country filters (FR-4.1/FR-4.2/FR-4.4), and a salary-range
- * filter scoped to one currency (FR-4.3). Sorting and interactive
- * pagination are intentionally out of scope for this page in this commit;
- * it shows one page of employees using the backend's default pagination.
+ * department/country filters (FR-4.1/FR-4.2/FR-4.4), a salary-range filter
+ * scoped to one currency (FR-4.3), and sorting by any backend-supported
+ * field. Interactive pagination is intentionally out of scope for this page
+ * in this commit; it shows one page of employees using the backend's
+ * default pagination.
  */
 export function EmployeeListPage() {
   useDocumentTitle('Employees - PayScope')
@@ -44,12 +48,24 @@ export function EmployeeListPage() {
   const [appliedMaxSalary, setAppliedMaxSalary] = useState('')
   const [salaryValidationError, setSalaryValidationError] = useState<string | null>(null)
 
+  // Sort field/direction apply immediately on selection, like
+  // department/country. State always holds a real value (defaulting to the
+  // backend's own default, `id`/`asc`) so the controls always show a
+  // meaningful selection; the request itself omits `sort_by`/`sort_order`
+  // when they match that default, keeping an unsorted-listing request
+  // identical to before sorting existed.
+  const [sortBy, setSortBy] = useState(DEFAULT_EMPLOYEE_SORT_BY)
+  const [sortOrder, setSortOrder] = useState<SortOrder>(DEFAULT_EMPLOYEE_SORT_ORDER)
+  const isDefaultSort = sortBy === DEFAULT_EMPLOYEE_SORT_BY && sortOrder === DEFAULT_EMPLOYEE_SORT_ORDER
+
   const { data, isLoading, error, retry } = useEmployeeList(appliedSearch, {
     department,
     country,
     currency: appliedCurrency,
     minSalary: appliedMinSalary,
     maxSalary: appliedMaxSalary,
+    sortBy: isDefaultSort ? '' : sortBy,
+    sortOrder: isDefaultSort ? '' : sortOrder,
   })
   const {
     departments,
@@ -114,6 +130,11 @@ export function EmployeeListPage() {
     setAppliedMaxSalary('')
   }
 
+  function handleSortReset() {
+    setSortBy(DEFAULT_EMPLOYEE_SORT_BY)
+    setSortOrder(DEFAULT_EMPLOYEE_SORT_ORDER)
+  }
+
   const hasSalaryFilter =
     currencyInput !== '' ||
     minSalaryInput !== '' ||
@@ -158,6 +179,14 @@ export function EmployeeListPage() {
         onMaxSalaryChange={setMaxSalaryInput}
         onSubmit={handleSalarySubmit}
         onClear={handleSalaryClear}
+      />
+
+      <EmployeeSort
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSortByChange={setSortBy}
+        onSortOrderChange={setSortOrder}
+        onReset={handleSortReset}
       />
 
       {isLoading ? (
