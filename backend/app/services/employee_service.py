@@ -3,9 +3,12 @@
 from dataclasses import dataclass
 
 from sqlalchemy import ColumnElement, and_, or_, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.errors import ConflictError
 from app.models.employee import Employee
+from app.schemas.employee import EmployeeCreate
 from app.utils.pagination import Page, PaginationParams, paginate
 from app.utils.sorting import SortOrder, apply_sort
 
@@ -58,6 +61,55 @@ def get_employee(session: Session, employee_id: int) -> Employee | None:
     running a fresh `SELECT` every time.
     """
     return session.get(Employee, employee_id)
+
+
+def get_employee_by_code(session: Session, employee_code: str) -> Employee | None:
+    """Return the employee with `employee_code`, or `None` if none exists.
+
+    `Employee.employee_code` is unique, so at most one row can match.
+    """
+    statement = select(Employee).where(Employee.employee_code == employee_code)
+    return session.execute(statement).scalar_one_or_none()
+
+
+def create_employee(session: Session, data: EmployeeCreate) -> Employee:
+    """Create a new employee from `data`.
+
+    `Employee.employee_code` is unique, so a duplicate code is rejected
+    with `ConflictError` rather than silently failing with a raw database
+    error. That check and the insert happen in the same request, but a
+    concurrent request could still race past it before either commits; the
+    database's own unique constraint is the final guard for that case, so
+    a resulting `IntegrityError` on commit is rolled back and translated
+    into the same `ConflictError` instead of surfacing as a raw database
+    error — mirroring `salary_service.create_salary`.
+    """
+    if get_employee_by_code(session, data.employee_code) is not None:
+        raise ConflictError(
+            code="EMPLOYEE_CODE_ALREADY_EXISTS",
+            message=f"Employee code {data.employee_code!r} already exists",
+        )
+
+    employee = Employee(
+        employee_code=data.employee_code,
+        first_name=data.first_name,
+        last_name=data.last_name,
+        department=data.department,
+        country=data.country,
+        job_title=data.job_title,
+        employment_status=data.employment_status,
+    )
+    session.add(employee)
+    try:
+        session.commit()
+    except IntegrityError:
+        session.rollback()
+        raise ConflictError(
+            code="EMPLOYEE_CODE_ALREADY_EXISTS",
+            message=f"Employee code {data.employee_code!r} already exists",
+        ) from None
+
+    return employee
 
 
 def list_employees(

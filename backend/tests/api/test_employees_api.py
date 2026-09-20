@@ -1,8 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.errors import ConflictError
 from app.models.employee import Employee
+from app.schemas.employee import EmployeeCreate
+from app.services import employee_service
 from app.utils.pagination import DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE
 
 ENDPOINT = "/api/v1/employees"
@@ -19,6 +23,19 @@ def _employee(index: int, **overrides) -> Employee:
     )
     fields.update(overrides)
     return Employee(**fields)
+
+
+def _employee_payload(index: int, **overrides) -> dict:
+    payload = dict(
+        employee_code=f"EMP-{index:03d}",
+        first_name=f"First{index}",
+        last_name=f"Last{index}",
+        department="Engineering",
+        country="UK",
+        job_title="Software Engineer",
+    )
+    payload.update(overrides)
+    return payload
 
 
 def _seed_employees(db_session: Session, count: int) -> list[Employee]:
@@ -532,3 +549,203 @@ def test_list_employees_deterministic_ordering(client: TestClient, db_session: S
     codes = [item["employee_code"] for item in first_response["items"]]
     assert codes == ["EMP-001", "EMP-002", "EMP-003"]
     assert first_response == second_response
+
+
+# --- POST /api/v1/employees -------------------------------------------------
+
+
+def test_create_employee_returns_201(client: TestClient, db_session: Session) -> None:
+    response = client.post(ENDPOINT, json=_employee_payload(1))
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["employee_code"] == "EMP-001"
+    assert body["first_name"] == "First1"
+    assert body["last_name"] == "Last1"
+    assert body["department"] == "Engineering"
+    assert body["country"] == "UK"
+    assert body["job_title"] == "Software Engineer"
+    assert body["employment_status"] == "active"
+    assert isinstance(body["id"], int)
+
+
+def test_create_employee_response_fields(client: TestClient, db_session: Session) -> None:
+    body = client.post(ENDPOINT, json=_employee_payload(1)).json()
+
+    assert set(body.keys()) == {
+        "id",
+        "employee_code",
+        "first_name",
+        "last_name",
+        "department",
+        "country",
+        "job_title",
+        "employment_status",
+    }
+
+
+def test_create_employee_defaults_employment_status_to_active(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.post(ENDPOINT, json=_employee_payload(1))
+
+    assert response.json()["employment_status"] == "active"
+
+
+def test_create_employee_accepts_explicit_employment_status(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.post(
+        ENDPOINT, json=_employee_payload(1, employment_status="terminated")
+    )
+
+    assert response.status_code == 201
+    assert response.json()["employment_status"] == "terminated"
+
+
+def test_create_employee_persists_and_can_be_retrieved(
+    client: TestClient, db_session: Session
+) -> None:
+    created = client.post(ENDPOINT, json=_employee_payload(1)).json()
+
+    response = client.get(f"{ENDPOINT}/{created['id']}")
+
+    assert response.status_code == 200
+    assert response.json() == created
+
+
+def test_create_employee_appears_in_listing(client: TestClient, db_session: Session) -> None:
+    client.post(ENDPOINT, json=_employee_payload(1))
+
+    response = client.get(ENDPOINT)
+
+    assert response.json()["total"] == 1
+
+
+def test_create_employee_missing_employee_code_returns_422(
+    client: TestClient, db_session: Session
+) -> None:
+    payload = _employee_payload(1)
+    del payload["employee_code"]
+
+    response = client.post(ENDPOINT, json=payload)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+@pytest.mark.parametrize(
+    "field", ["employee_code", "first_name", "last_name", "department", "country", "job_title"]
+)
+def test_create_employee_missing_required_field_returns_422(
+    client: TestClient, db_session: Session, field: str
+) -> None:
+    payload = _employee_payload(1)
+    del payload[field]
+
+    response = client.post(ENDPOINT, json=payload)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "field", ["employee_code", "first_name", "last_name", "department", "country", "job_title"]
+)
+def test_create_employee_empty_required_field_returns_422(
+    client: TestClient, db_session: Session, field: str
+) -> None:
+    payload = _employee_payload(1, **{field: ""})
+
+    response = client.post(ENDPOINT, json=payload)
+
+    assert response.status_code == 422
+
+
+def test_create_employee_rejects_invalid_employment_status(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.post(ENDPOINT, json=_employee_payload(1, employment_status="on_leave"))
+
+    assert response.status_code == 422
+
+
+def test_create_employee_rejects_employee_code_too_long(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.post(ENDPOINT, json=_employee_payload(1, employee_code="X" * 21))
+
+    assert response.status_code == 422
+
+
+def test_create_employee_rejects_non_string_employee_code(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.post(ENDPOINT, json=_employee_payload(1, employee_code=12345))
+
+    assert response.status_code == 422
+
+
+def test_create_employee_duplicate_employee_code_returns_409(
+    client: TestClient, db_session: Session
+) -> None:
+    client.post(ENDPOINT, json=_employee_payload(1))
+
+    response = client.post(ENDPOINT, json=_employee_payload(2, employee_code="EMP-001"))
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "EMPLOYEE_CODE_ALREADY_EXISTS"
+
+
+def test_create_employee_duplicate_does_not_modify_existing_record(
+    client: TestClient, db_session: Session
+) -> None:
+    first = client.post(ENDPOINT, json=_employee_payload(1)).json()
+
+    client.post(
+        ENDPOINT,
+        json=_employee_payload(2, employee_code="EMP-001", first_name="Someone Else"),
+    )
+
+    persisted = db_session.execute(
+        select(Employee).where(Employee.employee_code == "EMP-001")
+    ).scalar_one()
+    assert persisted.id == first["id"]
+    assert persisted.first_name == "First1"
+
+
+def test_create_employee_duplicate_does_not_create_a_second_row(
+    client: TestClient, db_session: Session
+) -> None:
+    client.post(ENDPOINT, json=_employee_payload(1))
+    client.post(ENDPOINT, json=_employee_payload(2, employee_code="EMP-001"))
+
+    count = db_session.scalar(
+        select(func.count()).select_from(Employee).where(Employee.employee_code == "EMP-001")
+    )
+    assert count == 1
+
+
+def test_create_employee_service_rolls_back_and_raises_conflict_on_race(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A concurrent request could insert an employee with the same code
+    after this call's own pre-check already found none; the database's
+    unique constraint is the final guard for that race, and `create_employee`
+    must translate the resulting `IntegrityError` into `ConflictError`
+    without leaving the session broken or a duplicate row behind."""
+    db_session.add(_employee(1))
+    db_session.commit()
+
+    monkeypatch.setattr(employee_service, "get_employee_by_code", lambda session, code: None)
+
+    with pytest.raises(ConflictError):
+        employee_service.create_employee(
+            db_session, EmployeeCreate(**_employee_payload(2, employee_code="EMP-001"))
+        )
+
+    count = db_session.scalar(
+        select(func.count()).select_from(Employee).where(Employee.employee_code == "EMP-001")
+    )
+    assert count == 1
+    # The session must still be usable after the rollback.
+    assert db_session.scalar(select(func.count()).select_from(Employee)) == 1

@@ -6,7 +6,7 @@ from app.core.errors import NotFoundError
 from app.db.session import get_db
 from app.models.employee import Employee
 from app.models.salary import Salary
-from app.schemas.employee import EmployeeListResponse, EmployeeRead
+from app.schemas.employee import EmployeeCreate, EmployeeListResponse, EmployeeRead
 from app.schemas.error import ErrorResponse
 from app.schemas.salary import (
     SalaryCalculatedValues,
@@ -39,6 +39,30 @@ def _get_salary_or_404(db: Session, employee_id: int) -> Salary:
             message=f"No salary record found for employee {employee_id}",
         )
     return salary
+
+
+@router.post(
+    "",
+    response_model=EmployeeRead,
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        409: {"model": ErrorResponse, "description": "employee_code already exists"},
+        422: {"model": ErrorResponse, "description": "Invalid request body"},
+    },
+)
+def create_employee(
+    data: EmployeeCreate,
+    db: Session = Depends(get_db),
+) -> EmployeeRead:
+    """Create a new employee.
+
+    Raises a `409` if `employee_code` already belongs to another employee
+    (`Employee.employee_code` is unique). `employment_status` defaults to
+    `active` if omitted (see `EmployeeCreate`).
+    """
+    employee = employee_service.create_employee(db, data)
+
+    return EmployeeRead.model_validate(employee)
 
 
 @router.get(
