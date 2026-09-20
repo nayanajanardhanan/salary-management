@@ -39,4 +39,41 @@ describe('fetchSalaryStatistics', () => {
     const headers = new Headers(requestInit?.headers)
     expect(headers.get('Authorization')).toBe('Bearer test-token')
   })
+
+  it('includes the department, country, and currency query parameters when given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyStatistics), { status: 200 }))
+
+    await fetchSalaryStatistics({ department: 'Engineering', country: 'United Kingdom', currency: 'GBP' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.pathname).toMatch(/\/api\/v1\/analytics\/salary$/)
+    expect(url.searchParams.get('department')).toBe('Engineering')
+    expect(url.searchParams.get('country')).toBe('United Kingdom')
+    expect(url.searchParams.get('currency')).toBe('GBP')
+  })
+
+  it('omits the department, country, and currency query parameters when not given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyStatistics), { status: 200 }))
+
+    await fetchSalaryStatistics()
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/analytics\/salary$/)
+  })
+
+  it('omits a query parameter that is given as an empty string', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyStatistics), { status: 200 }))
+
+    await fetchSalaryStatistics({ department: '', country: '', currency: '' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/analytics\/salary$/)
+  })
 })

@@ -27,6 +27,9 @@ export function AppLayout() {
             <li>
               <NavLink to="/employees">Employees</NavLink>
             </li>
+            <li>
+              <NavLink to="/analytics">Analytics</NavLink>
+            </li>
           </ul>
         </nav>
         <button type="button" className="app-header__signout" onClick={logout}>

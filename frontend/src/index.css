@@ -429,3 +429,106 @@ main {
 .employee-details__list dd {
   margin: 0;
 }
+
+.analytics-filters {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.analytics-filters .field {
+  max-width: 220px;
+}
+
+.analytics-filters button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  height: fit-content;
+}
+
+.analytics-filters__notice {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.salary-stat-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 0 0 32px;
+}
+
+.salary-stat-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.salary-stat-card__currency {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.salary-stat-card dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.salary-stat-card dl div {
+  display: contents;
+}
+
+.salary-stat-card dt {
+  color: var(--text-muted);
+}
+
+.salary-stat-card dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.salary-stats-table-scroll {
+  overflow-x: auto;
+  margin-bottom: 32px;
+}
+
+.salary-stats-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.salary-stats-table caption {
+  text-align: left;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.salary-stats-table th,
+.salary-stats-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.salary-stats-table thead th {
+  border-bottom: 2px solid var(--border);
+}
+
+.salary-stats-table__empty {
+  color: var(--text-muted);
+  margin-bottom: 32px;
+}

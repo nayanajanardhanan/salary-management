@@ -118,3 +118,34 @@ describe('/employees/:employeeId route', () => {
     expect(await screen.findByRole('heading', { name: /^employees$/i })).toBeInTheDocument()
   })
 })
+
+describe('/analytics route', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    logout()
+    window.history.pushState({}, '', '/')
+  })
+
+  it('redirects an unauthenticated visitor to /login instead of rendering the analytics dashboard', () => {
+    window.history.pushState({}, '', '/analytics')
+
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: /sign in to payscope/i })).toBeInTheDocument()
+  })
+
+  it('renders the analytics dashboard for an authenticated visitor, reachable via the primary nav', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(analyticsApi, 'fetchSalaryStatistics').mockResolvedValue(emptySalaryStatistics)
+    setToken('test-token')
+    window.history.pushState({}, '', '/')
+
+    render(<App />)
+
+    await user.click(screen.getByRole('link', { name: 'Analytics' }))
+
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /^salary analytics$/i }),
+    ).toBeInTheDocument()
+  })
+})
