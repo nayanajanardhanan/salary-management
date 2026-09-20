@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import type { EmployeeListResponse, SortOrder } from '../types/employee'
+import type { EmployeeListResponse, EmployeeSalaryDetails, SortOrder } from '../types/employee'
 
 const EMPLOYEES_ENDPOINT = '/api/v1/employees'
 
@@ -102,4 +102,24 @@ export function fetchEmployees(params: FetchEmployeesParams = {}): Promise<Emplo
   return apiRequest<EmployeeListResponse>(
     queryString ? `${EMPLOYEES_ENDPOINT}?${queryString}` : EMPLOYEES_ENDPOINT,
   )
+}
+
+/**
+ * Fetches one employee's core details together with their current salary,
+ * via the backend's combined `/details` endpoint
+ * (`app.api.v1.routes.employees.get_employee_details`) rather than two
+ * separate requests (`GET /employees/{id}` + `GET /employees/{id}/salary`)
+ * — the backend already joins them in a single query
+ * (`employee_service.get_employee_with_salary`), so a second request here
+ * would be an unnecessary N+1.
+ *
+ * The backend 404s this endpoint both when the employee doesn't exist
+ * (`error.code === 'EMPLOYEE_NOT_FOUND'`) and when the employee exists but
+ * has no salary record yet (`error.code === 'SALARY_NOT_FOUND'`) — it never
+ * returns partial employee-only data in the latter case. Distinguishing
+ * those two is the caller's job (see `hooks/useEmployeeDetails.ts`), via
+ * the normalized `ApiError.code` the shared client already extracts.
+ */
+export function fetchEmployeeDetails(employeeId: number): Promise<EmployeeSalaryDetails> {
+  return apiRequest<EmployeeSalaryDetails>(`${EMPLOYEES_ENDPOINT}/${employeeId}/details`)
 }

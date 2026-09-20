@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import type { EmployeeListItem } from '../../types/employee'
 import { formatEmployeeName, formatSalaryAmount } from '../../utils/formatting'
 
@@ -10,6 +11,8 @@ interface EmployeeTableProps {
  * Section 5.2): receives data via props, does not fetch it itself. Shows
  * the minimum fields Acceptance Criterion 8.1 requires — name, department,
  * country, salary amount, and currency — with no search/filter/sort UI.
+ * Each employee's name links to `/employees/:id` (`pages/EmployeeDetailsPage.tsx`),
+ * the only navigation this table owns.
  */
 export function EmployeeTable({ employees }: EmployeeTableProps) {
   return (
@@ -30,7 +33,9 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
         <tbody>
           {employees.map((employee) => (
             <tr key={employee.id}>
-              <th scope="row">{formatEmployeeName(employee)}</th>
+              <th scope="row">
+                <Link to={`/employees/${employee.id}`}>{formatEmployeeName(employee)}</Link>
+              </th>
               <td>{employee.department}</td>
               <td>{employee.country}</td>
               <td>

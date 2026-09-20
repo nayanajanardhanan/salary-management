@@ -1,7 +1,16 @@
 import { render, screen } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
 import type { EmployeeListItem } from '../../types/employee'
 import { EmployeeTable } from './EmployeeTable'
+
+function renderTable(employees: EmployeeListItem[]) {
+  return render(
+    <MemoryRouter>
+      <EmployeeTable employees={employees} />
+    </MemoryRouter>,
+  )
+}
 
 const employees: EmployeeListItem[] = [
   {
@@ -30,7 +39,7 @@ const employees: EmployeeListItem[] = [
 
 describe('EmployeeTable', () => {
   it('renders a semantic table with an accessible name and column headers', () => {
-    render(<EmployeeTable employees={employees} />)
+    renderTable(employees)
 
     const table = screen.getByRole('table', { name: /employees/i })
     expect(table).toBeInTheDocument()
@@ -42,7 +51,7 @@ describe('EmployeeTable', () => {
   })
 
   it('displays employee name, department, country, salary amount, and currency', () => {
-    render(<EmployeeTable employees={employees} />)
+    renderTable(employees)
 
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.getByText('Engineering')).toBeInTheDocument()
@@ -54,9 +63,16 @@ describe('EmployeeTable', () => {
   })
 
   it('shows a fallback for an employee with no salary record, without inventing a value', () => {
-    render(<EmployeeTable employees={employees} />)
+    renderTable(employees)
 
     expect(screen.getByText('Grace Hopper')).toBeInTheDocument()
     expect(screen.getByText('Not set')).toBeInTheDocument()
+  })
+
+  it('links each employee name to their details page, by id', () => {
+    renderTable(employees)
+
+    expect(screen.getByRole('link', { name: 'Ada Lovelace' })).toHaveAttribute('href', '/employees/1')
+    expect(screen.getByRole('link', { name: 'Grace Hopper' })).toHaveAttribute('href', '/employees/2')
   })
 })

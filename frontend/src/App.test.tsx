@@ -1,8 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
+import * as analyticsApi from './api/analytics'
 import * as employeesApi from './api/employees'
 import { logout, setToken } from './auth/authStore'
+
+const emptySalaryStatistics = { overall: [], by_department: [], by_country: [] }
 
 /**
  * Exercises the real `ProtectedRoute`/`AuthProvider` (no separate mock guard),
@@ -32,6 +36,7 @@ describe('/employees route', () => {
       total: 0,
       has_next: false,
     })
+    vi.spyOn(analyticsApi, 'fetchSalaryStatistics').mockResolvedValue(emptySalaryStatistics)
     setToken('test-token')
     window.history.pushState({}, '', '/employees')
 
@@ -40,5 +45,76 @@ describe('/employees route', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { name: /^employees$/i })).toBeInTheDocument(),
     )
+  })
+})
+
+describe('/employees/:employeeId route', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    logout()
+    window.history.pushState({}, '', '/')
+  })
+
+  const oneEmployeeResponse = {
+    items: [
+      {
+        id: 1,
+        employee_code: 'EMP-001',
+        first_name: 'Ada',
+        last_name: 'Lovelace',
+        department: 'Engineering',
+        country: 'United Kingdom',
+        job_title: 'Software Engineer',
+        employment_status: 'active' as const,
+        salary: { employee_id: 1, amount: '95000.00', currency: 'GBP' },
+      },
+    ],
+    page: 1,
+    page_size: 20,
+    total: 1,
+    has_next: false,
+  }
+
+  const detailsResponse = {
+    employee: {
+      id: 1,
+      employee_code: 'EMP-001',
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      department: 'Engineering',
+      country: 'United Kingdom',
+      job_title: 'Software Engineer',
+      employment_status: 'active' as const,
+    },
+    salary: { employee_id: 1, amount: '95000.00', currency: 'GBP' },
+  }
+
+  it('redirects an unauthenticated visitor to /login instead of rendering employee details', () => {
+    window.history.pushState({}, '', '/employees/1')
+
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: /sign in to payscope/i })).toBeInTheDocument()
+  })
+
+  it('navigates from the employee listing to that employee\'s details page, and back again', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(oneEmployeeResponse)
+    vi.spyOn(employeesApi, 'fetchEmployeeDetails').mockResolvedValue(detailsResponse)
+    vi.spyOn(analyticsApi, 'fetchSalaryStatistics').mockResolvedValue(emptySalaryStatistics)
+    setToken('test-token')
+    window.history.pushState({}, '', '/employees')
+
+    render(<App />)
+
+    const nameLink = await screen.findByRole('link', { name: 'Ada Lovelace' })
+    await user.click(nameLink)
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Ada Lovelace' })).toBeInTheDocument()
+    expect(screen.getByText('EMP-001')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: /back to employee listing/i }))
+
+    expect(await screen.findByRole('heading', { name: /^employees$/i })).toBeInTheDocument()
   })
 })

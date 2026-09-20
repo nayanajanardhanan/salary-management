@@ -404,3 +404,28 @@ main {
 .employee-table thead th {
   border-bottom: 2px solid var(--border);
 }
+
+.employee-details__back-link {
+  margin-bottom: 16px;
+}
+
+.employee-details__list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+  margin: 0 0 24px;
+  max-width: 480px;
+}
+
+.employee-details__list div {
+  display: contents;
+}
+
+.employee-details__list dt {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.employee-details__list dd {
+  margin: 0;
+}

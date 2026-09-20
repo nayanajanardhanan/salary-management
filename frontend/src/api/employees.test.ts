@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { logout, setToken } from '../auth/authStore'
-import { fetchEmployees } from './employees'
+import { fetchEmployeeDetails, fetchEmployees } from './employees'
 
 const emptyResponse = {
   items: [],
@@ -258,5 +258,63 @@ describe('fetchEmployees', () => {
     expect(url.searchParams.get('sort_order')).toBe('desc')
     expect(url.searchParams.get('page')).toBe('3')
     expect(url.searchParams.get('page_size')).toBe('10')
+  })
+})
+
+describe('fetchEmployeeDetails', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    logout()
+  })
+
+  const detailsResponse = {
+    employee: {
+      id: 1,
+      employee_code: 'EMP-001',
+      first_name: 'Ada',
+      last_name: 'Lovelace',
+      department: 'Engineering',
+      country: 'United Kingdom',
+      job_title: 'Software Engineer',
+      employment_status: 'active',
+    },
+    salary: { employee_id: 1, amount: '95000.00', currency: 'GBP' },
+  }
+
+  it('requests the details endpoint for the given employee id', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(detailsResponse), { status: 200 }))
+
+    const result = await fetchEmployeeDetails(1)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/1\/details$/)
+    expect(result).toEqual(detailsResponse)
+  })
+
+  it('uses a different employee id when given a different id', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(detailsResponse), { status: 200 }))
+
+    await fetchEmployeeDetails(42)
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/42\/details$/)
+  })
+
+  it('uses the shared authenticated client, attaching the stored access token', async () => {
+    setToken('test-token')
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(detailsResponse), { status: 200 }))
+
+    await fetchEmployeeDetails(1)
+
+    const [, requestInit] = fetchMock.mock.calls[0]
+    const headers = new Headers(requestInit?.headers)
+    expect(headers.get('Authorization')).toBe('Bearer test-token')
   })
 })

@@ -36,6 +36,37 @@ export interface EmployeeListResponse {
   has_next: boolean
 }
 
+/**
+ * Mirrors `app.schemas.employee.EmployeeRead` — an employee's core fields,
+ * with no `salary` (unlike `EmployeeListItem`). There is no `email` field:
+ * `Employee` (`app.models.employee`) doesn't store one, so the employee
+ * details page has nothing to show for it (checked against the actual
+ * schema rather than assumed).
+ */
+export interface EmployeeRead {
+  id: number
+  employee_code: string
+  first_name: string
+  last_name: string
+  department: string
+  country: string
+  job_title: string
+  employment_status: EmploymentStatus
+}
+
+/**
+ * Mirrors `app.schemas.employee.EmployeeSalaryDetails`, returned by
+ * `GET /employees/{id}/details` — an employee's core details together with
+ * their current salary in one response (`hooks/useEmployeeDetails.ts`).
+ * Unlike `EmployeeListItem.salary`, `salary` here is never `null`: the
+ * backend 404s the whole request instead when the employee has no salary
+ * record (see that hook's doc comment).
+ */
+export interface EmployeeSalaryDetails {
+  employee: EmployeeRead
+  salary: Salary
+}
+
 /** Mirrors `app.utils.sorting.SortOrder`. */
 export type SortOrder = 'asc' | 'desc'
 

@@ -32,3 +32,22 @@ export function formatSalaryAmount(amount: string, currency: string): string {
     return `${numeric.toLocaleString()} ${currency}`
   }
 }
+
+/**
+ * Formats a bare salary amount with no currency symbol/code — for a field
+ * displayed right next to its own separate "Currency" field (e.g. the
+ * employee details page), where `formatSalaryAmount`'s bundled currency
+ * code would be redundant. Never used on its own without the currency
+ * shown nearby (`docs/requirements.md` Section 5, FR-2.3).
+ */
+export function formatPlainAmount(amount: string): string {
+  const numeric = Number(amount)
+  if (!Number.isFinite(numeric)) {
+    return amount
+  }
+
+  return new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(numeric)
+}
