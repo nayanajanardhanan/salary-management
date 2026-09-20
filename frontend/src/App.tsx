@@ -3,6 +3,7 @@ import { AuthProvider } from './auth/AuthContext'
 import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { AppLayout } from './components/layout/AppLayout'
+import { EmployeeListPage } from './pages/EmployeeListPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -17,6 +18,7 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<AppLayout />}>
                 <Route index element={<HomePage />} />
+                <Route path="employees" element={<EmployeeListPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>
             </Route>
