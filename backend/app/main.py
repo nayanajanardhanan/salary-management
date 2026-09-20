@@ -2,6 +2,7 @@ from fastapi import FastAPI
 
 from app.api.routes.health import router as health_router
 from app.api.v1.routes.employees import router as employees_router
+from app.api.v1.routes.salaries import router as salaries_router
 from app.core.config import get_settings
 
 
@@ -16,6 +17,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(employees_router)
+    app.include_router(salaries_router)
 
     return app
 

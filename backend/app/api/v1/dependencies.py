@@ -1,5 +1,7 @@
 """Shared FastAPI dependencies for `/api/v1` routes."""
 
+from decimal import Decimal
+
 from fastapi import HTTPException, Query
 
 from app.services.employee_service import (
@@ -8,6 +10,13 @@ from app.services.employee_service import (
     SORTABLE_FIELDS,
     EmployeeFilters,
     EmployeeSort,
+)
+from app.services.salary_service import (
+    DEFAULT_SALARY_SORT_BY,
+    DEFAULT_SALARY_SORT_ORDER,
+    SALARY_SORTABLE_FIELDS,
+    SalaryFilters,
+    SalarySort,
 )
 from app.utils.pagination import DEFAULT_PAGE, DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE, PaginationParams
 from app.utils.sorting import SortOrder
@@ -82,3 +91,61 @@ def employee_sort_params(
             ),
         )
     return EmployeeSort(sort_by=sort_by, sort_order=sort_order)
+
+
+def salary_filters_params(
+    employee_id: int | None = Query(None, description="Exact-match filter on employee id."),
+    currency: str | None = Query(None, description="Exact-match filter on currency code."),
+    min_amount: Decimal | None = Query(
+        None, ge=0, description="Minimum salary amount, inclusive."
+    ),
+    max_amount: Decimal | None = Query(
+        None, ge=0, description="Maximum salary amount, inclusive."
+    ),
+    department: str | None = Query(
+        None, description="Exact-match filter on the associated employee's department."
+    ),
+    country: str | None = Query(
+        None, description="Exact-match filter on the associated employee's country."
+    ),
+) -> SalaryFilters:
+    """Parse salary listing filter query params.
+
+    A blank or whitespace-only `currency`/`department`/`country` is treated
+    the same as an omitted one. `min_amount`/`max_amount` reuse the same
+    non-negative constraint (`ge=0`) the `Salary.amount` column itself
+    enforces; a `min_amount` greater than `max_amount` is accepted (it
+    simply matches no rows, see `salary_service.list_salaries`) rather than
+    rejected, since no such validation rule is documented.
+    """
+    return SalaryFilters(
+        employee_id=employee_id,
+        currency=_blank_to_none(currency),
+        min_amount=min_amount,
+        max_amount=max_amount,
+        department=_blank_to_none(department),
+        country=_blank_to_none(country),
+    )
+
+
+def salary_sort_params(
+    sort_by: str = Query(
+        DEFAULT_SALARY_SORT_BY,
+        description=f"Field to sort by. One of: {', '.join(sorted(SALARY_SORTABLE_FIELDS))}.",
+    ),
+    sort_order: SortOrder = Query(DEFAULT_SALARY_SORT_ORDER, description="Sort direction."),
+) -> SalarySort:
+    """Parse and validate `sort_by`/`sort_order` query params for salary listing.
+
+    `sort_by` is checked against `SALARY_SORTABLE_FIELDS`, and rejected
+    with a `422` if unsupported, mirroring `employee_sort_params`.
+    """
+    if sort_by not in SALARY_SORTABLE_FIELDS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Unsupported sort_by value: {sort_by!r}. "
+                f"Supported values: {', '.join(sorted(SALARY_SORTABLE_FIELDS))}."
+            ),
+        )
+    return SalarySort(sort_by=sort_by, sort_order=sort_order)

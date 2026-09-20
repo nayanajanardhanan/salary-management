@@ -56,3 +56,13 @@ class SalarySummaryRead(BaseModel):
     amount: Decimal
     currency: str
     calculated: SalaryCalculatedValues
+
+
+class SalaryListResponse(BaseModel):
+    """A page of salaries, with pagination metadata (mirrors `EmployeeListResponse`)."""
+
+    items: list[SalaryRead]
+    page: int
+    page_size: int
+    total: int
+    has_next: bool
