@@ -377,6 +377,46 @@ def test_create_employee_salary_rejects_invalid_currency(
     assert response.status_code == 422
 
 
+@pytest.mark.parametrize("currency", ["ZZZ", "QQQ", "XYZ", "XAU", "XXX"])
+def test_create_employee_salary_rejects_well_formed_unsupported_currency(
+    client: TestClient, db_session: Session, currency: str
+) -> None:
+    """Well-formed (3-letter, uppercase) codes that aren't real currencies
+    (or are precious-metal/testing codes rather than salary currencies)
+    must still be rejected — FR-7.3 requires membership in a known,
+    supported set, not just the right shape."""
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.post(
+        f"{ENDPOINT}/{employee.id}/salary", json={"amount": "1000", "currency": currency}
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert any(
+        "not a supported currency" in detail["message"] for detail in body["error"]["details"]
+    )
+
+
+@pytest.mark.parametrize("currency", ["USD", "GBP", "EUR", "INR", "JPY", "AUD", "CAD", "SGD"])
+def test_create_employee_salary_accepts_supported_currency(
+    client: TestClient, db_session: Session, currency: str
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.post(
+        f"{ENDPOINT}/{employee.id}/salary", json={"amount": "1000", "currency": currency}
+    )
+
+    assert response.status_code == 201
+    assert response.json()["currency"] == currency
+
+
 def test_create_employee_salary_rejects_non_integer_employee_id(
     client: TestClient, db_session: Session
 ) -> None:
@@ -649,6 +689,33 @@ def test_update_employee_salary_rejects_invalid_currency(
     )
 
     assert response.status_code == 422
+
+
+@pytest.mark.parametrize("currency", ["ZZZ", "QQQ", "XAU"])
+def test_update_employee_salary_rejects_well_formed_unsupported_currency(
+    client: TestClient, db_session: Session, currency: str
+) -> None:
+    employee = _seed_employee_with_salary(db_session)
+
+    response = client.put(
+        f"{ENDPOINT}/{employee.id}/salary", json={"amount": "1000", "currency": currency}
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_update_employee_salary_accepts_supported_currency(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _seed_employee_with_salary(db_session, amount="1000.00", currency="USD")
+
+    response = client.put(
+        f"{ENDPOINT}/{employee.id}/salary", json={"amount": "2000.00", "currency": "EUR"}
+    )
+
+    assert response.status_code == 200
+    assert response.json()["currency"] == "EUR"
 
 
 def test_update_employee_salary_rejects_employee_id_in_body(

@@ -2,11 +2,23 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.core.currencies import SUPPORTED_CURRENCY_CODES
+
 
 def _validate_currency_format(value: str) -> str:
-    """Shared by every write schema's `currency` validator (see below)."""
+    """Shared by every write schema's `currency` validator (see below).
+
+    Enforces FR-7.3 ("the system shall validate that salary currency
+    values conform to a known, supported set of currency codes"): format
+    first (3 uppercase letters), then membership in
+    `SUPPORTED_CURRENCY_CODES` — checked in that order so a badly-shaped
+    value (wrong length, lowercase, digits) gets the more specific format
+    error rather than being lumped in with "not a supported currency".
+    """
     if not value.isalpha() or value != value.upper():
         raise ValueError("currency must be a 3-letter uppercase ISO 4217 code (e.g. 'USD').")
+    if value not in SUPPORTED_CURRENCY_CODES:
+        raise ValueError(f"{value!r} is not a supported currency code.")
     return value
 
 
@@ -30,7 +42,7 @@ class SalaryCreate(BaseModel):
         ...,
         min_length=3,
         max_length=3,
-        description="3-letter ISO 4217 currency code (e.g. 'USD').",
+        description="3-letter ISO 4217 currency code (e.g. 'USD'); must be one of the supported currency codes.",
     )
 
     @field_validator("currency")
@@ -66,7 +78,7 @@ class SalaryUpdate(BaseModel):
         ...,
         min_length=3,
         max_length=3,
-        description="3-letter ISO 4217 currency code (e.g. 'USD').",
+        description="3-letter ISO 4217 currency code (e.g. 'USD'); must be one of the supported currency codes.",
     )
 
     @field_validator("currency")
