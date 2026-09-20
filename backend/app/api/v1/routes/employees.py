@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.api.v1.dependencies import employee_filters_params, employee_sort_params, pagination_params
 from app.db.session import get_db
 from app.schemas.employee import EmployeeListResponse, EmployeeRead
-from app.schemas.salary import SalaryRead
-from app.services import employee_service, salary_service
+from app.schemas.salary import SalaryCalculatedValues, SalaryRead, SalarySummaryRead
+from app.services import employee_service, salary_calculation_service, salary_service
 from app.services.employee_service import EmployeeFilters, EmployeeSort
 from app.utils.pagination import PaginationParams
 
@@ -89,3 +89,53 @@ def get_employee_salary(
         )
 
     return SalaryRead.model_validate(salary)
+
+
+@router.get(
+    "/{employee_id}/salary/summary",
+    response_model=SalarySummaryRead,
+    responses={
+        404: {"description": "Employee not found, or the employee has no salary record"},
+    },
+)
+def get_employee_salary_summary(
+    employee_id: int = Path(..., description="The employee's numeric id."),
+    db: Session = Depends(get_db),
+) -> SalarySummaryRead:
+    """Retrieve an employee's salary together with calculated summary figures.
+
+    Raises a `404` if no employee with `employee_id` exists, or if that
+    employee exists but has no associated salary record.
+
+    `calculated` is produced by `salary_calculation_service`, reused
+    unchanged from the existing salary calculation logic rather than
+    recomputed here; since each employee has at most one salary record, its
+    `total`/`average`/`minimum`/`maximum` all equal `amount` today (see
+    `SalaryCalculatedValues`).
+    """
+    employee = employee_service.get_employee(db, employee_id)
+    if employee is None:
+        raise HTTPException(status_code=404, detail=f"Employee {employee_id} not found")
+
+    salary = salary_service.get_salary_for_employee(db, employee_id)
+    if salary is None:
+        raise HTTPException(
+            status_code=404, detail=f"No salary record found for employee {employee_id}"
+        )
+
+    salary_read = SalaryRead.model_validate(salary)
+    salaries = [salary_read]
+
+    calculated = SalaryCalculatedValues(
+        total=salary_calculation_service.total_salary(salaries),
+        average=salary_calculation_service.average_salary(salaries),
+        minimum=salary_calculation_service.min_salary(salaries),
+        maximum=salary_calculation_service.max_salary(salaries),
+    )
+
+    return SalarySummaryRead(
+        employee_id=salary_read.employee_id,
+        amount=salary_read.amount,
+        currency=salary_read.currency,
+        calculated=calculated,
+    )
