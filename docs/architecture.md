@@ -277,13 +277,23 @@ Validation happens at two levels:
 
 ### 4.7 Error Handling
 
-A small set of domain exceptions (defined in `core/errors.py`) — e.g.
-`NotFoundError`, `ValidationError` — are raised by services and translated
-by FastAPI exception handlers into a **consistent JSON error response**
-(Section 7.5). This avoids scattering `try/except` and ad-hoc error
-formatting across route handlers, and ensures internal details (stack
-traces, raw database errors) are never returned to the client, only logged
-server-side (FR-8.3, FR-8.4).
+A small set of domain exceptions (defined in `core/errors.py`), all
+subclasses of a common `AppError` base (carrying a `code`, `message`,
+optional `details`, and the HTTP status to respond with) — e.g.
+`NotFoundError` (404), `ValidationError` (422, for application-level checks
+a Pydantic schema alone can't express, such as an unsupported `sort_by`
+value) — are raised by routes/services and translated by a FastAPI
+exception handler into a **consistent JSON error response** (Section 7.5).
+Three further handlers extend the same response shape to cases outside
+`AppError`: FastAPI/Starlette's own `HTTPException` (e.g. an unmatched
+route), `RequestValidationError` (Pydantic query/path parameter validation
+failures, with per-field location/message/type in `details`), and a
+catch-all for any other unhandled exception, which is logged server-side
+(Python's standard `logging` module; no separate logging framework) and
+reduced to a generic `500` response. This avoids scattering `try/except`
+and ad-hoc error formatting across route handlers, and ensures internal
+details (stack traces, raw exception messages, database errors) are never
+returned to the client, only logged server-side (FR-8.3, FR-8.4).
 
 ---
 
@@ -470,11 +480,18 @@ between, e.g., the list endpoint and any future export endpoint.
 
 ### 7.5 Consistent Error Response Structure
 
-All error responses share a single JSON shape (e.g. `{"error": {"code":
-..., "message": ...}}`), produced by shared FastAPI exception handlers
-(Section 4.7) rather than being formatted individually per route. This
-supports FR-8.1–FR-8.3 and lets the frontend's API client handle all errors
-uniformly (Section 5.3).
+All error responses share a single JSON shape, `{"error": {"code": ...,
+"message": ..., "details": ...}}`, produced by shared FastAPI exception
+handlers (Section 4.7) rather than being formatted individually per route.
+`code` is a stable, machine-readable string (e.g. `EMPLOYEE_NOT_FOUND`,
+`VALIDATION_ERROR`); `message` is a human-readable description; `details`
+is `null` for most errors and a structured payload (e.g. a list of
+field-level validation failures) where useful. Common status codes: `404`
+for a missing resource, `422` for request validation and other rejected
+input, `500` for an unexpected failure (with a generic message; specifics
+are logged server-side only, never returned). This supports FR-8.1–FR-8.3
+and lets the frontend's API client handle all errors uniformly
+(Section 5.3).
 
 ### 7.6 API Versioning Approach
 

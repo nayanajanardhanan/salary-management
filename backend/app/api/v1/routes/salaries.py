@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.dependencies import pagination_params, salary_filters_params, salary_sort_params
 from app.db.session import get_db
+from app.schemas.error import ErrorResponse
 from app.schemas.salary import SalaryListResponse, SalaryRead
 from app.services import salary_service
 from app.services.salary_service import SalaryFilters, SalarySort
@@ -11,7 +12,11 @@ from app.utils.pagination import PaginationParams
 router = APIRouter(prefix="/api/v1/salaries", tags=["salaries"])
 
 
-@router.get("", response_model=SalaryListResponse)
+@router.get(
+    "",
+    response_model=SalaryListResponse,
+    responses={422: {"model": ErrorResponse, "description": "Invalid query parameters"}},
+)
 def list_salaries(
     pagination: PaginationParams = Depends(pagination_params),
     filters: SalaryFilters = Depends(salary_filters_params),

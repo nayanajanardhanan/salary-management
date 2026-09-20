@@ -90,7 +90,7 @@ def test_get_employee_salary_for_nonexistent_employee_returns_404(
     response = client.get(f"{ENDPOINT}/999999/salary")
 
     assert response.status_code == 404
-    assert "detail" in response.json()
+    assert response.json()["error"]["code"] == "EMPLOYEE_NOT_FOUND"
 
 
 def test_get_employee_salary_for_employee_without_salary_returns_404(
@@ -103,7 +103,7 @@ def test_get_employee_salary_for_employee_without_salary_returns_404(
     response = client.get(f"{ENDPOINT}/{employee.id}/salary")
 
     assert response.status_code == 404
-    assert "detail" in response.json()
+    assert response.json()["error"]["code"] == "SALARY_NOT_FOUND"
 
 
 def test_get_employee_salary_rejects_non_integer_id(client: TestClient, db_session: Session) -> None:
@@ -208,7 +208,7 @@ def test_get_employee_salary_summary_for_nonexistent_employee_returns_404(
     response = client.get(f"{ENDPOINT}/999999/salary/summary")
 
     assert response.status_code == 404
-    assert "detail" in response.json()
+    assert response.json()["error"]["code"] == "EMPLOYEE_NOT_FOUND"
 
 
 def test_get_employee_salary_summary_for_employee_without_salary_returns_404(
@@ -221,7 +221,7 @@ def test_get_employee_salary_summary_for_employee_without_salary_returns_404(
     response = client.get(f"{ENDPOINT}/{employee.id}/salary/summary")
 
     assert response.status_code == 404
-    assert "detail" in response.json()
+    assert response.json()["error"]["code"] == "SALARY_NOT_FOUND"
 
 
 def test_get_employee_salary_summary_rejects_non_integer_id(

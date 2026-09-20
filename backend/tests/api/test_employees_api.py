@@ -497,7 +497,9 @@ def test_get_employee_not_found_returns_404(client: TestClient, db_session: Sess
     response = client.get(f"{ENDPOINT}/999999")
 
     assert response.status_code == 404
-    assert "detail" in response.json()
+    body = response.json()
+    assert body["error"]["code"] == "EMPLOYEE_NOT_FOUND"
+    assert "999999" in body["error"]["message"]
 
 
 def test_get_employee_not_found_on_empty_database(client: TestClient, db_session: Session) -> None:

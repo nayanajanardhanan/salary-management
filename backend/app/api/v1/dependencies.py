@@ -2,8 +2,9 @@
 
 from decimal import Decimal
 
-from fastapi import HTTPException, Query
+from fastapi import Query
 
+from app.core.errors import ValidationError
 from app.services.employee_service import (
     DEFAULT_SORT_BY,
     DEFAULT_SORT_ORDER,
@@ -83,9 +84,9 @@ def employee_sort_params(
     how invalid `page`/`page_size` values are already handled.
     """
     if sort_by not in SORTABLE_FIELDS:
-        raise HTTPException(
-            status_code=422,
-            detail=(
+        raise ValidationError(
+            code="INVALID_SORT_FIELD",
+            message=(
                 f"Unsupported sort_by value: {sort_by!r}. "
                 f"Supported values: {', '.join(sorted(SORTABLE_FIELDS))}."
             ),
@@ -141,9 +142,9 @@ def salary_sort_params(
     with a `422` if unsupported, mirroring `employee_sort_params`.
     """
     if sort_by not in SALARY_SORTABLE_FIELDS:
-        raise HTTPException(
-            status_code=422,
-            detail=(
+        raise ValidationError(
+            code="INVALID_SORT_FIELD",
+            message=(
                 f"Unsupported sort_by value: {sort_by!r}. "
                 f"Supported values: {', '.join(sorted(SALARY_SORTABLE_FIELDS))}."
             ),

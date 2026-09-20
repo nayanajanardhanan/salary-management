@@ -1,9 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Path
+from fastapi import APIRouter, Depends, Path
 from sqlalchemy.orm import Session
 
 from app.api.v1.dependencies import employee_filters_params, employee_sort_params, pagination_params
+from app.core.errors import NotFoundError
 from app.db.session import get_db
+from app.models.employee import Employee
+from app.models.salary import Salary
 from app.schemas.employee import EmployeeListResponse, EmployeeRead
+from app.schemas.error import ErrorResponse
 from app.schemas.salary import SalaryCalculatedValues, SalaryRead, SalarySummaryRead
 from app.services import employee_service, salary_calculation_service, salary_service
 from app.services.employee_service import EmployeeFilters, EmployeeSort
@@ -12,7 +16,30 @@ from app.utils.pagination import PaginationParams
 router = APIRouter(prefix="/api/v1/employees", tags=["employees"])
 
 
-@router.get("", response_model=EmployeeListResponse)
+def _get_employee_or_404(db: Session, employee_id: int) -> Employee:
+    employee = employee_service.get_employee(db, employee_id)
+    if employee is None:
+        raise NotFoundError(
+            code="EMPLOYEE_NOT_FOUND", message=f"Employee {employee_id} not found"
+        )
+    return employee
+
+
+def _get_salary_or_404(db: Session, employee_id: int) -> Salary:
+    salary = salary_service.get_salary_for_employee(db, employee_id)
+    if salary is None:
+        raise NotFoundError(
+            code="SALARY_NOT_FOUND",
+            message=f"No salary record found for employee {employee_id}",
+        )
+    return salary
+
+
+@router.get(
+    "",
+    response_model=EmployeeListResponse,
+    responses={422: {"model": ErrorResponse, "description": "Invalid query parameters"}},
+)
 def list_employees(
     pagination: PaginationParams = Depends(pagination_params),
     filters: EmployeeFilters = Depends(employee_filters_params),
@@ -45,7 +72,10 @@ def list_employees(
 @router.get(
     "/{employee_id}",
     response_model=EmployeeRead,
-    responses={404: {"description": "Employee not found"}},
+    responses={
+        404: {"model": ErrorResponse, "description": "Employee not found"},
+        422: {"model": ErrorResponse, "description": "Invalid employee_id"},
+    },
 )
 def get_employee(
     employee_id: int = Path(..., description="The employee's numeric id."),
@@ -55,9 +85,7 @@ def get_employee(
 
     Raises a `404` if no employee with `employee_id` exists.
     """
-    employee = employee_service.get_employee(db, employee_id)
-    if employee is None:
-        raise HTTPException(status_code=404, detail=f"Employee {employee_id} not found")
+    employee = _get_employee_or_404(db, employee_id)
 
     return EmployeeRead.model_validate(employee)
 
@@ -66,7 +94,11 @@ def get_employee(
     "/{employee_id}/salary",
     response_model=SalaryRead,
     responses={
-        404: {"description": "Employee not found, or the employee has no salary record"},
+        404: {
+            "model": ErrorResponse,
+            "description": "Employee not found, or the employee has no salary record",
+        },
+        422: {"model": ErrorResponse, "description": "Invalid employee_id"},
     },
 )
 def get_employee_salary(
@@ -78,15 +110,8 @@ def get_employee_salary(
     Raises a `404` if no employee with `employee_id` exists, or if that
     employee exists but has no associated salary record.
     """
-    employee = employee_service.get_employee(db, employee_id)
-    if employee is None:
-        raise HTTPException(status_code=404, detail=f"Employee {employee_id} not found")
-
-    salary = salary_service.get_salary_for_employee(db, employee_id)
-    if salary is None:
-        raise HTTPException(
-            status_code=404, detail=f"No salary record found for employee {employee_id}"
-        )
+    _get_employee_or_404(db, employee_id)
+    salary = _get_salary_or_404(db, employee_id)
 
     return SalaryRead.model_validate(salary)
 
@@ -95,7 +120,11 @@ def get_employee_salary(
     "/{employee_id}/salary/summary",
     response_model=SalarySummaryRead,
     responses={
-        404: {"description": "Employee not found, or the employee has no salary record"},
+        404: {
+            "model": ErrorResponse,
+            "description": "Employee not found, or the employee has no salary record",
+        },
+        422: {"model": ErrorResponse, "description": "Invalid employee_id"},
     },
 )
 def get_employee_salary_summary(
@@ -113,15 +142,8 @@ def get_employee_salary_summary(
     `total`/`average`/`minimum`/`maximum` all equal `amount` today (see
     `SalaryCalculatedValues`).
     """
-    employee = employee_service.get_employee(db, employee_id)
-    if employee is None:
-        raise HTTPException(status_code=404, detail=f"Employee {employee_id} not found")
-
-    salary = salary_service.get_salary_for_employee(db, employee_id)
-    if salary is None:
-        raise HTTPException(
-            status_code=404, detail=f"No salary record found for employee {employee_id}"
-        )
+    _get_employee_or_404(db, employee_id)
+    salary = _get_salary_or_404(db, employee_id)
 
     salary_read = SalaryRead.model_validate(salary)
     salaries = [salary_read]
