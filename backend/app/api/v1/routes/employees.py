@@ -87,6 +87,11 @@ def list_employees(
     - `search`: case-insensitive match against employee code, first name,
       or last name.
     - `country` / `department`: exact-match filters.
+    - `currency` / `min_salary` / `max_salary`: filter by the employee's
+      salary (`docs/requirements.md` FR-4.3); an employee with no salary
+      record cannot match a `min_salary`/`max_salary` filter. Combine with
+      `currency` to compare within a single currency at a time
+      (Section 5).
     - `sort_by` / `sort_order`: sort the (optionally filtered) results;
       defaults to `id` ascending, i.e. the original listing order.
 

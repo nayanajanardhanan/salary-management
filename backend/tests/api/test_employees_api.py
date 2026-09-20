@@ -257,6 +257,204 @@ def test_list_employees_filter_by_department(client: TestClient, db_session: Ses
     assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
 
 
+# --- FR-4.3: filtering employees by salary range -----------------------
+
+
+def _employee_with_salary(
+    db_session: Session, index: int, *, amount: str, currency: str = "USD", **overrides
+) -> Employee:
+    employee = _employee(index, **overrides)
+    db_session.add(employee)
+    db_session.flush()
+    db_session.add(Salary(employee_id=employee.id, amount=Decimal(amount), currency=currency))
+    return employee
+
+
+def test_list_employees_filter_by_min_salary(client: TestClient, db_session: Session) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00")
+    _employee_with_salary(db_session, 2, amount="5000.00")
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"min_salary": "2000"})
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
+
+
+def test_list_employees_filter_by_max_salary(client: TestClient, db_session: Session) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00")
+    _employee_with_salary(db_session, 2, amount="5000.00")
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"max_salary": "2000"})
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-001"]
+
+
+def test_list_employees_filter_by_salary_range(client: TestClient, db_session: Session) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00")
+    _employee_with_salary(db_session, 2, amount="3000.00")
+    _employee_with_salary(db_session, 3, amount="5000.00")
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"min_salary": "2000", "max_salary": "4000"})
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
+
+
+def test_list_employees_salary_range_is_inclusive(client: TestClient, db_session: Session) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00")
+    _employee_with_salary(db_session, 2, amount="2000.00")
+    _employee_with_salary(db_session, 3, amount="3000.00")
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"min_salary": "1000", "max_salary": "3000"})
+
+    body = response.json()
+    assert {item["employee_code"] for item in body["items"]} == {"EMP-001", "EMP-002", "EMP-003"}
+
+
+def test_list_employees_filter_by_currency(client: TestClient, db_session: Session) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00", currency="USD")
+    _employee_with_salary(db_session, 2, amount="1000.00", currency="GBP")
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"currency": "GBP"})
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
+
+
+def test_list_employees_currency_filter_scopes_salary_range_to_one_currency(
+    client: TestClient, db_session: Session
+) -> None:
+    # A raw numeric range spanning two currencies (e.g. 900-1100) would
+    # otherwise match both a small GBP salary and a small INR salary,
+    # which aren't comparable figures (docs/requirements.md Section 5) —
+    # pairing `currency` with min/max scopes the range to one of them.
+    _employee_with_salary(db_session, 1, amount="1000.00", currency="GBP")
+    _employee_with_salary(db_session, 2, amount="1000.00", currency="INR")
+    db_session.commit()
+
+    response = client.get(
+        ENDPOINT, params={"currency": "GBP", "min_salary": "900", "max_salary": "1100"}
+    )
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-001"]
+
+
+def test_list_employees_salary_filter_excludes_employees_without_salary(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00")
+    db_session.add(_employee(2))  # no salary record
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"min_salary": "0"})
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-001"]
+
+
+def test_list_employees_without_salary_filter_includes_employees_without_salary(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00")
+    db_session.add(_employee(2))  # no salary record
+    db_session.commit()
+
+    response = client.get(ENDPOINT)
+
+    body = response.json()
+    assert {item["employee_code"] for item in body["items"]} == {"EMP-001", "EMP-002"}
+
+
+def test_list_employees_salary_filter_combined_with_department_filter(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00", department="Engineering")
+    _employee_with_salary(db_session, 2, amount="5000.00", department="Engineering")
+    _employee_with_salary(db_session, 3, amount="5000.00", department="Sales")
+    db_session.commit()
+
+    response = client.get(
+        ENDPOINT, params={"department": "Engineering", "min_salary": "2000"}
+    )
+
+    body = response.json()
+    assert [item["employee_code"] for item in body["items"]] == ["EMP-002"]
+
+
+def test_list_employees_salary_filter_with_no_matches_returns_empty_page(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00")
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"min_salary": "9999999"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["items"] == []
+    assert body["total"] == 0
+
+
+def test_list_employees_rejects_negative_min_salary(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.get(ENDPOINT, params={"min_salary": "-1"})
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_list_employees_rejects_negative_max_salary(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.get(ENDPOINT, params={"max_salary": "-1"})
+
+    assert response.status_code == 422
+
+
+def test_list_employees_rejects_non_numeric_min_salary(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.get(ENDPOINT, params={"min_salary": "not-a-number"})
+
+    assert response.status_code == 422
+
+
+def test_list_employees_min_salary_above_max_salary_returns_empty(
+    client: TestClient, db_session: Session
+) -> None:
+    _employee_with_salary(db_session, 1, amount="1000.00")
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"min_salary": "5000", "max_salary": "1000"})
+
+    assert response.status_code == 200
+    assert response.json()["items"] == []
+
+
+def test_list_employees_salary_filter_pagination_metadata(
+    client: TestClient, db_session: Session
+) -> None:
+    for i in range(1, 6):
+        _employee_with_salary(db_session, i, amount="5000.00")
+    db_session.commit()
+
+    response = client.get(ENDPOINT, params={"min_salary": "1000", "page": 1, "page_size": 2})
+
+    body = response.json()
+    assert body["total"] == 5
+    assert body["page_size"] == 2
+    assert len(body["items"]) == 2
+    assert body["has_next"] is True
+
+
 def test_list_employees_combines_search_and_multiple_filters(
     client: TestClient, db_session: Session
 ) -> None:

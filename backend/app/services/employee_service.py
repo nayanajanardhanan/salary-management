@@ -1,6 +1,7 @@
 """Business logic for employee queries, independent of the HTTP layer."""
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 from sqlalchemy import ColumnElement, and_, or_, select
 from sqlalchemy.exc import IntegrityError
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.errors import ConflictError, NotFoundError
 from app.models.employee import Employee
+from app.models.salary import Salary
 from app.schemas.employee import EmployeeCreate, EmployeeUpdate
 from app.utils.pagination import Page, PaginationParams, paginate
 from app.utils.sorting import SortOrder, apply_sort
@@ -36,12 +38,22 @@ class EmployeeFilters:
 
     All fields are optional (and default to `None`, meaning "no
     constraint"), so passing an empty `EmployeeFilters()` preserves the
-    unfiltered listing behavior.
+    unfiltered listing behavior. `currency`/`min_salary`/`max_salary`
+    filter on the employee's associated `Salary` (`docs/requirements.md`
+    FR-4.3), scoped to a single currency at a time (Section 5) — combine
+    `currency` with `min_salary`/`max_salary` to compare within one
+    currency; omitting `currency` still filters `amount` numerically but
+    may then span salaries in different currencies, mirroring how
+    `salary_service.SalaryFilters.min_amount`/`max_amount` already behave
+    without requiring a paired `currency`.
     """
 
     search: str | None = None
     country: str | None = None
     department: str | None = None
+    currency: str | None = None
+    min_salary: Decimal | None = None
+    max_salary: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -204,18 +216,27 @@ def list_employees(
 
     `filters.search` matches, case-insensitively, against `employee_code`,
     `first_name`, or `last_name` (OR'd together); `country`/`department` are
-    exact-match filters. All are combined with AND and applied before
-    sorting and pagination, so `total`/`has_next` reflect the filtered
-    result set. `sort` (default: `id` ascending) is applied via
-    `apply_sort`, with `id` as a stable tie-breaker so rows sharing the same
-    sort value still come back in a deterministic order across pages.
+    exact-match filters; `currency`/`min_salary`/`max_salary` filter on the
+    employee's associated `Salary` (FR-4.3), joined in only when one of
+    those three is actually supplied — an `INNER JOIN`, so an employee with
+    no salary record simply can't match a salary-range filter, which is the
+    correct exclusion, and since `Salary.employee_id` is unique, the join
+    can never multiply an employee's row. All filters are combined with AND
+    and applied before sorting and pagination, so `total`/`has_next` reflect
+    the filtered result set. `sort` (default: `id` ascending) is applied
+    via `apply_sort`, with `id` as a stable tie-breaker so rows sharing the
+    same sort value still come back in a deterministic order across pages.
     Pagination itself is still applied at the database level via `paginate`
     (offset/limit plus a `COUNT` query on the same statement), so the full
     employee table is never loaded into memory.
     """
     statement = select(Employee)
 
-    conditions = _build_filter_conditions(filters) if filters else []
+    filters = filters or EmployeeFilters()
+    if filters.currency or filters.min_salary is not None or filters.max_salary is not None:
+        statement = statement.join(Salary, Salary.employee_id == Employee.id)
+
+    conditions = _build_filter_conditions(filters)
     if conditions:
         statement = statement.where(and_(*conditions))
 
@@ -243,5 +264,11 @@ def _build_filter_conditions(filters: EmployeeFilters) -> list[ColumnElement[boo
         conditions.append(Employee.country == filters.country)
     if filters.department:
         conditions.append(Employee.department == filters.department)
+    if filters.currency:
+        conditions.append(Salary.currency == filters.currency)
+    if filters.min_salary is not None:
+        conditions.append(Salary.amount >= filters.min_salary)
+    if filters.max_salary is not None:
+        conditions.append(Salary.amount <= filters.max_salary)
 
     return conditions

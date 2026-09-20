@@ -48,16 +48,34 @@ def employee_filters_params(
     ),
     country: str | None = Query(None, description="Exact-match filter on country."),
     department: str | None = Query(None, description="Exact-match filter on department."),
+    currency: str | None = Query(
+        None, description="Exact-match filter on the employee's salary currency."
+    ),
+    min_salary: Decimal | None = Query(
+        None, ge=0, description="Minimum salary amount, inclusive."
+    ),
+    max_salary: Decimal | None = Query(
+        None, ge=0, description="Maximum salary amount, inclusive."
+    ),
 ) -> EmployeeFilters:
     """Parse employee search/filter query params.
 
-    A blank or whitespace-only value is treated the same as an omitted
-    one, so `?search=` behaves like no `search` was passed at all.
+    A blank or whitespace-only `search`/`country`/`department`/`currency`
+    is treated the same as an omitted one, so `?search=` behaves like no
+    `search` was passed at all. `min_salary`/`max_salary` reuse the same
+    non-negative constraint (`ge=0`) `Salary.amount` itself enforces;
+    combine with `currency` to compare within a single currency
+    (`docs/requirements.md` FR-4.3, Section 5) — omitting it still filters
+    `amount` numerically, mirroring `salary_filters_params`'
+    `min_amount`/`max_amount`.
     """
     return EmployeeFilters(
         search=_blank_to_none(search),
         country=_blank_to_none(country),
         department=_blank_to_none(department),
+        currency=_blank_to_none(currency),
+        min_salary=min_salary,
+        max_salary=max_salary,
     )
 
 
