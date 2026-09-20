@@ -7,6 +7,16 @@
 
 export type EmploymentStatus = 'active' | 'inactive' | 'terminated'
 
+/** Mirrors `EmploymentStatus` (backend enum), each with a human-readable label — for the employee creation form's select. */
+export const EMPLOYMENT_STATUS_OPTIONS: ReadonlyArray<{ value: EmploymentStatus; label: string }> = [
+  { value: 'active', label: 'Active' },
+  { value: 'inactive', label: 'Inactive' },
+  { value: 'terminated', label: 'Terminated' },
+]
+
+/** Mirrors `app.models.employee.Employee.employment_status`'s column default. */
+export const DEFAULT_EMPLOYMENT_STATUS: EmploymentStatus = 'active'
+
 /** Mirrors `app.schemas.salary.SalaryRead`. */
 export interface Salary {
   employee_id: number
@@ -45,6 +55,24 @@ export interface EmployeeListResponse {
  */
 export interface EmployeeRead {
   id: number
+  employee_code: string
+  first_name: string
+  last_name: string
+  department: string
+  country: string
+  job_title: string
+  employment_status: EmploymentStatus
+}
+
+/**
+ * Mirrors `app.schemas.employee.EmployeeCreate` — the request body for
+ * `POST /employees`. `employment_status` is optional there (defaults to
+ * `EmploymentStatus.ACTIVE`), but the creation form always sends an
+ * explicit value (`DEFAULT_EMPLOYMENT_STATUS`), so it's typed as required
+ * here — equivalent to omitting it, since the backend's own default is the
+ * same value.
+ */
+export interface EmployeeCreate {
   employee_code: string
   first_name: string
   last_name: string

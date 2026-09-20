@@ -149,3 +149,58 @@ describe('/analytics route', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('/employees/new route', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    logout()
+    window.history.pushState({}, '', '/')
+  })
+
+  it('redirects an unauthenticated visitor to /login instead of rendering the creation form', () => {
+    window.history.pushState({}, '', '/employees/new')
+
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: /sign in to payscope/i })).toBeInTheDocument()
+  })
+
+  it('is reachable from the employee listing, and creates an employee for an authenticated visitor', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue({
+      items: [],
+      page: 1,
+      page_size: 20,
+      total: 0,
+      has_next: false,
+    })
+    vi.spyOn(analyticsApi, 'fetchSalaryStatistics').mockResolvedValue(emptySalaryStatistics)
+    vi.spyOn(employeesApi, 'createEmployee').mockResolvedValue({
+      id: 99,
+      employee_code: 'EMP-099',
+      first_name: 'Katherine',
+      last_name: 'Johnson',
+      department: 'Research',
+      country: 'United States',
+      job_title: 'Mathematician',
+      employment_status: 'active',
+    })
+    setToken('test-token')
+    window.history.pushState({}, '', '/employees')
+
+    render(<App />)
+
+    await user.click(await screen.findByRole('link', { name: 'Add employee' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Add Employee' })).toBeInTheDocument()
+
+    await user.type(screen.getByLabelText(/employee code/i), 'EMP-099')
+    await user.type(screen.getByLabelText(/first name/i), 'Katherine')
+    await user.type(screen.getByLabelText(/last name/i), 'Johnson')
+    await user.type(screen.getByLabelText(/^department/i), 'Research')
+    await user.type(screen.getByLabelText(/^country/i), 'United States')
+    await user.type(screen.getByLabelText(/job title/i), 'Mathematician')
+    await user.click(screen.getByRole('button', { name: 'Create employee' }))
+
+    expect(await screen.findByText(/created successfully/i)).toBeInTheDocument()
+  })
+})

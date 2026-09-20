@@ -1,5 +1,5 @@
 import { apiRequest } from './client'
-import type { EmployeeListResponse, EmployeeSalaryDetails, SortOrder } from '../types/employee'
+import type { EmployeeCreate, EmployeeListResponse, EmployeeRead, EmployeeSalaryDetails, SortOrder } from '../types/employee'
 
 const EMPLOYEES_ENDPOINT = '/api/v1/employees'
 
@@ -122,4 +122,21 @@ export function fetchEmployees(params: FetchEmployeesParams = {}): Promise<Emplo
  */
 export function fetchEmployeeDetails(employeeId: number): Promise<EmployeeSalaryDetails> {
   return apiRequest<EmployeeSalaryDetails>(`${EMPLOYEES_ENDPOINT}/${employeeId}/details`)
+}
+
+/**
+ * Creates a new employee via the shared authenticated client, exactly like
+ * every other request in this module — same base URL, auth header, and
+ * error normalization, so a `409` (duplicate `employee_code`,
+ * `error.code === 'EMPLOYEE_CODE_ALREADY_EXISTS'`) or a `422` (schema
+ * validation, `error.code === 'VALIDATION_ERROR'`, with per-field details)
+ * surfaces as the same normalized `ApiError` every other endpoint already
+ * throws (`hooks/useCreateEmployee.ts` interprets it). Salary is a
+ * separate resource (`POST /employees/{id}/salary`) and out of scope here.
+ */
+export function createEmployee(data: EmployeeCreate): Promise<EmployeeRead> {
+  return apiRequest<EmployeeRead>(EMPLOYEES_ENDPOINT, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
 }

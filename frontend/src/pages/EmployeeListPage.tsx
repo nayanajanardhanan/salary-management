@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingIndicator } from '../components/common/LoadingIndicator'
@@ -201,6 +202,10 @@ export function EmployeeListPage() {
   return (
     <section aria-labelledby="employee-list-heading">
       <h1 id="employee-list-heading">Employees</h1>
+
+      <p className="employee-list__actions">
+        <Link to="/employees/new">Add employee</Link>
+      </p>
 
       <EmployeeSearch
         value={searchInput}

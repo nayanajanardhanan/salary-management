@@ -4,6 +4,7 @@ import { ErrorBoundary } from './components/common/ErrorBoundary'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { AppLayout } from './components/layout/AppLayout'
 import { AnalyticsPage } from './pages/AnalyticsPage'
+import { EmployeeCreatePage } from './pages/EmployeeCreatePage'
 import { EmployeeDetailsPage } from './pages/EmployeeDetailsPage'
 import { EmployeeListPage } from './pages/EmployeeListPage'
 import { HomePage } from './pages/HomePage'
@@ -21,6 +22,7 @@ function App() {
               <Route element={<AppLayout />}>
                 <Route index element={<HomePage />} />
                 <Route path="employees" element={<EmployeeListPage />} />
+                <Route path="employees/new" element={<EmployeeCreatePage />} />
                 <Route path="employees/:employeeId" element={<EmployeeDetailsPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="*" element={<NotFoundPage />} />
