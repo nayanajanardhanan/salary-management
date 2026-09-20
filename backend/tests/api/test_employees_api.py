@@ -1048,3 +1048,216 @@ def test_update_employee_service_rolls_back_on_persistence_failure(
     db_session.expire_all()
     persisted = db_session.get(Employee, employee.id)
     assert persisted.department == "Engineering"
+
+
+# --- DELETE /api/v1/employees/{employee_id} ---------------------------------
+
+
+def test_delete_employee_returns_204(client: TestClient, db_session: Session) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.delete(f"{ENDPOINT}/{employee.id}")
+
+    assert response.status_code == 204
+    assert response.content == b""
+
+
+def test_delete_employee_removes_it_from_the_database(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    client.delete(f"{ENDPOINT}/{employee.id}")
+
+    remaining = db_session.get(Employee, employee.id)
+    assert remaining is None
+
+
+def test_delete_employee_subsequent_get_returns_404(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    client.delete(f"{ENDPOINT}/{employee.id}")
+    response = client.get(f"{ENDPOINT}/{employee.id}")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "EMPLOYEE_NOT_FOUND"
+
+
+def test_delete_employee_removes_it_from_listing(client: TestClient, db_session: Session) -> None:
+    employees = _seed_employees(db_session, 2)
+
+    client.delete(f"{ENDPOINT}/{employees[0].id}")
+
+    response = client.get(ENDPOINT)
+    assert response.json()["total"] == 1
+
+
+def test_delete_employee_for_nonexistent_employee_returns_404(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.delete(f"{ENDPOINT}/999999")
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "EMPLOYEE_NOT_FOUND"
+
+
+def test_delete_employee_twice_returns_404_on_second_attempt(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    first = client.delete(f"{ENDPOINT}/{employee.id}")
+    second = client.delete(f"{ENDPOINT}/{employee.id}")
+
+    assert first.status_code == 204
+    assert second.status_code == 404
+
+
+def test_delete_employee_rejects_non_integer_employee_id(
+    client: TestClient, db_session: Session
+) -> None:
+    response = client.delete(f"{ENDPOINT}/not-a-number")
+
+    assert response.status_code == 422
+
+
+def test_delete_employee_does_not_affect_other_employees(
+    client: TestClient, db_session: Session
+) -> None:
+    employees = _seed_employees(db_session, 2)
+    target, other = employees[0], employees[1]
+
+    client.delete(f"{ENDPOINT}/{target.id}")
+
+    response = client.get(f"{ENDPOINT}/{other.id}")
+    assert response.status_code == 200
+    assert response.json()["id"] == other.id
+
+
+# --- DELETE /{employee_id} and the Employee-Salary relationship -----------
+
+
+def test_delete_employee_with_salary_succeeds(client: TestClient, db_session: Session) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.flush()
+    db_session.add(Salary(employee_id=employee.id, amount=Decimal("1000.00"), currency="USD"))
+    db_session.commit()
+
+    response = client.delete(f"{ENDPOINT}/{employee.id}")
+
+    assert response.status_code == 204
+
+
+def test_delete_employee_also_deletes_its_salary(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.flush()
+    db_session.add(Salary(employee_id=employee.id, amount=Decimal("1000.00"), currency="USD"))
+    db_session.commit()
+
+    client.delete(f"{ENDPOINT}/{employee.id}")
+
+    remaining = db_session.execute(
+        select(Salary).where(Salary.employee_id == employee.id)
+    ).scalar_one_or_none()
+    assert remaining is None
+
+
+def test_delete_employee_leaves_no_orphaned_salary_rows(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.flush()
+    db_session.add(Salary(employee_id=employee.id, amount=Decimal("1000.00"), currency="USD"))
+    db_session.commit()
+
+    client.delete(f"{ENDPOINT}/{employee.id}")
+
+    count = db_session.scalar(select(func.count()).select_from(Salary))
+    assert count == 0
+
+
+def test_delete_employee_without_salary_succeeds(
+    client: TestClient, db_session: Session
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.commit()
+
+    response = client.delete(f"{ENDPOINT}/{employee.id}")
+
+    assert response.status_code == 204
+
+
+def test_delete_employee_leaves_other_employees_salaries_intact(
+    client: TestClient, db_session: Session
+) -> None:
+    target = _employee(1)
+    other = _employee(2)
+    db_session.add_all([target, other])
+    db_session.flush()
+    db_session.add_all(
+        [
+            Salary(employee_id=target.id, amount=Decimal("1000.00"), currency="USD"),
+            Salary(employee_id=other.id, amount=Decimal("2000.00"), currency="GBP"),
+        ]
+    )
+    db_session.commit()
+
+    client.delete(f"{ENDPOINT}/{target.id}")
+
+    other_salary = db_session.execute(
+        select(Salary).where(Salary.employee_id == other.id)
+    ).scalar_one()
+    assert other_salary.amount == Decimal("2000.00")
+    assert other_salary.currency == "GBP"
+
+
+def test_delete_employee_service_raises_not_found_for_missing_employee(
+    db_session: Session,
+) -> None:
+    with pytest.raises(NotFoundError):
+        employee_service.delete_employee(db_session, 999999)
+
+
+def test_delete_employee_service_rolls_back_on_persistence_failure(
+    db_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    employee = _employee(1)
+    db_session.add(employee)
+    db_session.flush()
+    db_session.add(Salary(employee_id=employee.id, amount=Decimal("1000.00"), currency="USD"))
+    db_session.commit()
+
+    def _boom() -> None:
+        raise RuntimeError("simulated persistence failure")
+
+    monkeypatch.setattr(db_session, "commit", _boom)
+
+    with pytest.raises(RuntimeError):
+        employee_service.delete_employee(db_session, employee.id)
+
+    # `session.rollback()` inside `delete_employee` must both revert the
+    # pending delete and leave the session usable for the queries below
+    # (rather than leaving it in a broken "pending rollback" state).
+    db_session.expire_all()
+    assert db_session.get(Employee, employee.id) is not None
+    remaining_salary = db_session.execute(
+        select(Salary).where(Salary.employee_id == employee.id)
+    ).scalar_one_or_none()
+    assert remaining_salary is not None
+    assert remaining_salary.amount == Decimal("1000.00")

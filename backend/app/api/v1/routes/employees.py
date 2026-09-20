@@ -150,6 +150,32 @@ def update_employee(
     return EmployeeRead.model_validate(employee)
 
 
+@router.delete(
+    "/{employee_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={
+        404: {"model": ErrorResponse, "description": "Employee not found"},
+        422: {"model": ErrorResponse, "description": "Invalid employee_id"},
+    },
+)
+def delete_employee(
+    employee_id: int = Path(..., description="The employee's numeric id."),
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete an employee.
+
+    Raises a `404` if no employee with `employee_id` exists. Returns
+    `204 No Content` on success, with no response body. Deleting an
+    employee also deletes its salary record, if one exists: `Employee`'s
+    `salary` relationship cascades at the ORM level
+    (`cascade="all, delete-orphan"`), and `Salary.employee_id`'s foreign
+    key cascades at the database level too (`ondelete="CASCADE"`) — this
+    is existing, established relationship behavior, not something new
+    introduced by this endpoint.
+    """
+    employee_service.delete_employee(db, employee_id)
+
+
 @router.get(
     "/{employee_id}/salary",
     response_model=SalaryRead,

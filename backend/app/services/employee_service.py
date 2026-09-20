@@ -146,6 +146,35 @@ def update_employee(session: Session, employee_id: int, data: EmployeeUpdate) ->
     return employee
 
 
+def delete_employee(session: Session, employee_id: int) -> None:
+    """Delete the employee identified by `employee_id`.
+
+    Raises `NotFoundError` if no employee with `employee_id` exists.
+    `Employee.salary` is configured with `cascade="all, delete-orphan"`,
+    and `Salary.employee_id` has a matching `ondelete="CASCADE"` foreign
+    key (see `app.models.employee.Employee` / `app.models.salary.Salary`)
+    — so deleting an employee through the ORM session automatically
+    deletes its salary record too, in the same flush/transaction, without
+    any separate delete call here (verified empirically: no orphaned
+    `Salary` row survives). Committed within the same transaction; if
+    persistence fails, the session is rolled back (so nothing is left
+    partially deleted) and the exception is re-raised for the centralized
+    unexpected-error handler rather than exposing a raw database error.
+    """
+    employee = get_employee(session, employee_id)
+    if employee is None:
+        raise NotFoundError(
+            code="EMPLOYEE_NOT_FOUND", message=f"Employee {employee_id} not found"
+        )
+
+    session.delete(employee)
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+
+
 def list_employees(
     session: Session,
     pagination: PaginationParams,
