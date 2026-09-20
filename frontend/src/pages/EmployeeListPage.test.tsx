@@ -67,7 +67,10 @@ const fullListResponse: EmployeeListResponse = {
 }
 
 const filterOptionsResponse: SalaryStatistics = {
-  overall: [],
+  overall: [
+    { currency: 'GBP', count: 1, average: '95000.00', minimum: '95000.00', maximum: '95000.00' },
+    { currency: 'USD', count: 1, average: '105000.00', minimum: '105000.00', maximum: '105000.00' },
+  ],
   by_department: [
     {
       department: 'Engineering',
@@ -200,7 +203,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument()
@@ -218,7 +221,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'EMP-001', department: '', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: 'EMP-001', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
   })
@@ -235,7 +238,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'ada', department: '', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: 'ada', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
   })
 
@@ -251,7 +254,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Ada', department: '', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Ada', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(screen.getByLabelText('Search employees')).toHaveValue('Ada')
   })
@@ -288,7 +291,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Clear search' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Grace Hopper')).toBeInTheDocument()
     expect(screen.getByLabelText('Search employees')).toHaveValue('')
@@ -373,7 +376,7 @@ describe('EmployeeListPage', () => {
     await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: 'Engineering', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: 'Engineering', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
     expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument()
@@ -396,7 +399,7 @@ describe('EmployeeListPage', () => {
     await user.selectOptions(screen.getByLabelText('Country'), 'United States')
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: 'United States' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: 'United States', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(await screen.findByText('Grace Hopper')).toBeInTheDocument()
     expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument()
@@ -413,7 +416,7 @@ describe('EmployeeListPage', () => {
     spy.mockResolvedValueOnce(oneEmployeeResponse)
     await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: 'Engineering', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: 'Engineering', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
 
     spy.mockResolvedValueOnce(oneEmployeeResponse)
@@ -422,7 +425,7 @@ describe('EmployeeListPage', () => {
       expect(spy).toHaveBeenLastCalledWith({
         search: '',
         department: 'Engineering',
-        country: 'United Kingdom',
+        country: 'United Kingdom', currency: '', minSalary: '', maxSalary: ''
       }),
     )
   })
@@ -439,13 +442,13 @@ describe('EmployeeListPage', () => {
     await user.type(screen.getByLabelText('Search employees'), 'Lovel')
     await user.click(screen.getByRole('button', { name: 'Search' }))
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
 
     spy.mockResolvedValueOnce(oneEmployeeResponse)
     await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: 'Engineering', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: 'Engineering', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
   })
 
@@ -461,7 +464,7 @@ describe('EmployeeListPage', () => {
     await user.type(screen.getByLabelText('Search employees'), 'Lovel')
     await user.click(screen.getByRole('button', { name: 'Search' }))
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
 
     spy.mockResolvedValueOnce(oneEmployeeResponse)
@@ -470,7 +473,7 @@ describe('EmployeeListPage', () => {
       expect(spy).toHaveBeenLastCalledWith({
         search: 'Lovel',
         department: '',
-        country: 'United Kingdom',
+        country: 'United Kingdom', currency: '', minSalary: '', maxSalary: ''
       }),
     )
   })
@@ -493,7 +496,7 @@ describe('EmployeeListPage', () => {
       expect(spy).toHaveBeenLastCalledWith({
         search: 'Lovel',
         department: 'Engineering',
-        country: 'United Kingdom',
+        country: 'United Kingdom', currency: '', minSalary: '', maxSalary: ''
       }),
     )
   })
@@ -513,7 +516,7 @@ describe('EmployeeListPage', () => {
       expect(spy).toHaveBeenLastCalledWith({
         search: '',
         department: 'Engineering',
-        country: 'United Kingdom',
+        country: 'United Kingdom', currency: '', minSalary: '', maxSalary: ''
       }),
     )
 
@@ -521,7 +524,7 @@ describe('EmployeeListPage', () => {
     await user.selectOptions(screen.getByLabelText('Department'), 'All departments')
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: 'United Kingdom' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: '', department: '', country: 'United Kingdom', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(screen.getByLabelText('Department')).toHaveValue('')
     expect(screen.getByLabelText('Country')).toHaveValue('United Kingdom')
@@ -547,7 +550,7 @@ describe('EmployeeListPage', () => {
     await user.click(screen.getByRole('button', { name: 'Clear filters' }))
 
     await waitFor(() =>
-      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '' }),
+      expect(spy).toHaveBeenLastCalledWith({ search: 'Lovel', department: '', country: '', currency: '', minSalary: '', maxSalary: '' }),
     )
     expect(screen.getByLabelText('Department')).toHaveValue('')
     expect(screen.getByLabelText('Country')).toHaveValue('')
@@ -607,5 +610,353 @@ describe('EmployeeListPage', () => {
     await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
     expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
     expect(screen.getByLabelText('Department')).not.toBeDisabled()
+  })
+
+  it('renders a currency dropdown sourced from the backend, with accessible labels for currency/min/max', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+
+    const currencySelect = await screen.findByLabelText('Currency')
+    expect(within(currencySelect).getByText('Select currency')).toBeInTheDocument()
+    expect(within(currencySelect).getByText('GBP')).toBeInTheDocument()
+    expect(within(currencySelect).getByText('USD')).toBeInTheDocument()
+    expect(screen.getByLabelText('Minimum salary')).toBeInTheDocument()
+    expect(screen.getByLabelText('Maximum salary')).toBeInTheDocument()
+  })
+
+  it('filters by minimum salary only, scoped to the selected currency', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), '50000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: '',
+        department: '',
+        country: '',
+        currency: 'GBP',
+        minSalary: '50000',
+        maxSalary: '',
+      }),
+    )
+    expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument()
+  })
+
+  it('filters by maximum salary only, scoped to the selected currency', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Maximum salary'), '100000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: '',
+        department: '',
+        country: '',
+        currency: 'GBP',
+        minSalary: '',
+        maxSalary: '100000',
+      }),
+    )
+  })
+
+  it('filters by minimum and maximum salary together', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), '50000')
+    await user.type(screen.getByLabelText('Maximum salary'), '100000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: '',
+        department: '',
+        country: '',
+        currency: 'GBP',
+        minSalary: '50000',
+        maxSalary: '100000',
+      }),
+    )
+  })
+
+  it('applies a currency-only filter without requiring a salary amount', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: '',
+        department: '',
+        country: '',
+        currency: 'GBP',
+        minSalary: '',
+        maxSalary: '',
+      }),
+    )
+  })
+
+  it('requires a currency before applying a minimum/maximum salary filter, and does not send a request', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Minimum salary')
+    expect(spy).toHaveBeenCalledTimes(1)
+
+    await user.type(screen.getByLabelText('Minimum salary'), '50000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/select a currency/i)
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects a negative minimum salary with an accessible message, and does not send a request', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+    expect(spy).toHaveBeenCalledTimes(1)
+
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), '-100')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/minimum salary must not be negative/i)
+    expect(spy).toHaveBeenCalledTimes(1)
+    expect(screen.getByLabelText('Minimum salary')).toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('rejects a negative maximum salary with an accessible message, and does not send a request', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Maximum salary'), '-1')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/maximum salary must not be negative/i)
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects a non-numeric minimum salary with an accessible message, and does not send a request', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), 'not-a-number')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/minimum salary must be a number/i)
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it('rejects a minimum salary greater than the maximum salary, and does not send a request', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), '5000')
+    await user.type(screen.getByLabelText('Maximum salary'), '1000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /minimum salary must not exceed maximum salary/i,
+    )
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it('combines a salary range filter with search', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.type(screen.getByLabelText('Search employees'), 'Lovel')
+    await user.click(screen.getByRole('button', { name: 'Search' }))
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), '50000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: 'Lovel',
+        department: '',
+        country: '',
+        currency: 'GBP',
+        minSalary: '50000',
+        maxSalary: '',
+      }),
+    )
+  })
+
+  it('combines a salary range filter with department and country', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+    await user.selectOptions(screen.getByLabelText('Country'), 'United Kingdom')
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), '50000')
+    await user.type(screen.getByLabelText('Maximum salary'), '100000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: '',
+        department: 'Engineering',
+        country: 'United Kingdom',
+        currency: 'GBP',
+        minSalary: '50000',
+        maxSalary: '100000',
+      }),
+    )
+  })
+
+  it('clears the salary filter without affecting other active filters', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    expect(screen.queryByRole('button', { name: 'Clear salary filter' })).not.toBeInTheDocument()
+
+    spy.mockResolvedValue(oneEmployeeResponse)
+    await user.selectOptions(screen.getByLabelText('Department'), 'Engineering')
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), '50000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: '',
+        department: 'Engineering',
+        country: '',
+        currency: 'GBP',
+        minSalary: '50000',
+        maxSalary: '',
+      }),
+    )
+
+    spy.mockResolvedValueOnce(oneEmployeeResponse)
+    await user.click(screen.getByRole('button', { name: 'Clear salary filter' }))
+
+    await waitFor(() =>
+      expect(spy).toHaveBeenLastCalledWith({
+        search: '',
+        department: 'Engineering',
+        country: '',
+        currency: '',
+        minSalary: '',
+        maxSalary: '',
+      }),
+    )
+    expect(screen.getByLabelText('Currency')).toHaveValue('')
+    expect(screen.getByLabelText('Minimum salary')).toHaveValue('')
+    expect(screen.getByLabelText('Department')).toHaveValue('Engineering')
+    expect(screen.queryByRole('button', { name: 'Clear salary filter' })).not.toBeInTheDocument()
+  })
+
+  it('shows an accessible message when a salary range filter has no matching employees', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    spy.mockResolvedValueOnce(emptyResponse)
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.type(screen.getByLabelText('Minimum salary'), '500000')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    await waitFor(() => expect(screen.getByText(/no employees match/i)).toBeInTheDocument())
+    expect(screen.getByText(/salary at least 500000 GBP/i)).toBeInTheDocument()
+  })
+
+  it('shows a safe, accessible error state when a salary-filtered request fails', async () => {
+    const user = userEvent.setup()
+    const spy = vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    spy.mockRejectedValueOnce(new ApiError(500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.'))
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+    await user.click(screen.getByRole('button', { name: 'Apply salary filter' }))
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument())
+    expect(screen.getByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  })
+
+  it('makes the currency scope clear to the user, before and after selecting a currency', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(employeesApi, 'fetchEmployees').mockResolvedValue(fullListResponse)
+
+    renderPage()
+    await waitFor(() => expect(screen.getByText('Grace Hopper')).toBeInTheDocument())
+    await screen.findByLabelText('Currency')
+
+    expect(screen.getByText(/salaries are never combined across currencies/i)).toBeInTheDocument()
+
+    await user.selectOptions(screen.getByLabelText('Currency'), 'GBP')
+
+    expect(screen.getByText(/filtering salary amounts in GBP only/i)).toBeInTheDocument()
   })
 })

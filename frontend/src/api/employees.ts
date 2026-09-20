@@ -15,6 +15,24 @@ export interface FetchEmployeesParams {
   department?: string
   /** Exact-match filter on country (FR-4.2); combines with `search`/`department` via AND. */
   country?: string
+  /**
+   * Exact-match filter on the employee's salary currency (FR-4.3/FR-7.3).
+   * Pair with `minSalary`/`maxSalary` to scope a salary range to one
+   * currency (`docs/requirements.md` Section 5: amounts in different
+   * currencies are never combined) — enforcing that pairing is the
+   * caller's responsibility (`hooks/useEmployeeList.ts`'s caller), not this
+   * module's.
+   */
+  currency?: string
+  /**
+   * Minimum salary amount, inclusive (FR-4.3). A decimal string, not a
+   * `number` — matches how `types/employee.ts` types `Salary.amount`, to
+   * avoid float precision loss; already-validated numeric text by the time
+   * it reaches this module.
+   */
+  minSalary?: string
+  /** Maximum salary amount, inclusive (FR-4.3). Same decimal-string rationale as `minSalary`. */
+  maxSalary?: string
 }
 
 /**
@@ -40,6 +58,15 @@ export function fetchEmployees(params: FetchEmployeesParams = {}): Promise<Emplo
   }
   if (params.country) {
     query.set('country', params.country)
+  }
+  if (params.currency) {
+    query.set('currency', params.currency)
+  }
+  if (params.minSalary) {
+    query.set('min_salary', params.minSalary)
+  }
+  if (params.maxSalary) {
+    query.set('max_salary', params.maxSalary)
   }
 
   const queryString = query.toString()

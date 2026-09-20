@@ -265,6 +265,53 @@ main {
   font-size: 0.9rem;
 }
 
+.salary-range-filter {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.salary-range-filter .field {
+  max-width: 160px;
+}
+
+.salary-range-filter button {
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+  height: fit-content;
+}
+
+.salary-range-filter button[type='submit'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.salary-range-filter__scope {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.salary-range-filter__error {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--error-text);
+  font-weight: 600;
+}
+
+.field input[aria-invalid='true'] {
+  border-color: var(--error-border);
+}
+
 .employee-table-scroll {
   overflow-x: auto;
 }

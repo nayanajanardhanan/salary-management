@@ -11,6 +11,19 @@ interface UseEmployeeListResult {
   retry: () => void
 }
 
+export interface EmployeeListFilters {
+  /** Exact-match department filter (FR-4.1). */
+  department?: string
+  /** Exact-match country filter (FR-4.2). */
+  country?: string
+  /** Exact-match salary currency filter (FR-4.3); see `api/employees.ts`. */
+  currency?: string
+  /** Minimum salary, inclusive (FR-4.3) — an already-validated numeric string, or `""`. */
+  minSalary?: string
+  /** Maximum salary, inclusive (FR-4.3) — an already-validated numeric string, or `""`. */
+  maxSalary?: string
+}
+
 const GENERIC_ERROR_MESSAGE = 'Something went wrong while loading employees. Please try again.'
 
 /**
@@ -20,14 +33,20 @@ const GENERIC_ERROR_MESSAGE = 'Something went wrong while loading employees. Ple
  * the shared client (`../api/client.ts`), which clears the session and flips
  * the app to the unauthenticated state — this hook doesn't special-case it.
  *
- * `search` (FR-3.1), `department` (FR-4.1), and `country` (FR-4.2) are all
- * optional; each is already-normalized (trimmed search text, an exact
- * department/country value or `""`). Passing a new value for any of them
- * re-runs the request with all three combined (FR-4.4/FR-4.5) — an empty
- * string omits that param, so all-empty requests the unfiltered listing
- * (the same request this hook made before search/filters existed).
+ * `search` (FR-3.1) and `filters` (department/country/currency/salary range,
+ * FR-4.1-FR-4.3) are all optional; each is already-normalized (trimmed
+ * search text, an exact filter value, or `""`). Passing a new value for any
+ * of them re-runs the request with everything combined (FR-4.4/FR-4.5) — an
+ * empty string omits that param, so all-empty requests the unfiltered
+ * listing (the same request this hook made before search/filters existed).
+ * `filters` is destructured into primitive dependencies below rather than
+ * used as a single dependency, so passing a fresh object literal on every
+ * render (as `EmployeeListPage` does) doesn't re-run the effect unless an
+ * actual value changed.
  */
-export function useEmployeeList(search = '', department = '', country = ''): UseEmployeeListResult {
+export function useEmployeeList(search = '', filters: EmployeeListFilters = {}): UseEmployeeListResult {
+  const { department = '', country = '', currency = '', minSalary = '', maxSalary = '' } = filters
+
   const [data, setData] = useState<EmployeeListResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +57,7 @@ export function useEmployeeList(search = '', department = '', country = ''): Use
     setIsLoading(true)
     setError(null)
 
-    fetchEmployees({ search, department, country })
+    fetchEmployees({ search, department, country, currency, minSalary, maxSalary })
       .then((response) => {
         if (!cancelled) {
           setData(response)
@@ -57,7 +76,7 @@ export function useEmployeeList(search = '', department = '', country = ''): Use
     return () => {
       cancelled = true
     }
-  }, [search, department, country, attempt])
+  }, [search, department, country, currency, minSalary, maxSalary, attempt])
 
   const retry = useCallback(() => setAttempt((count) => count + 1), [])
 

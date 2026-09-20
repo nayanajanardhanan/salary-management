@@ -114,4 +114,53 @@ describe('fetchEmployees', () => {
     const [requestUrl] = fetchMock.mock.calls[0]
     expect(String(requestUrl)).toMatch(/\/api\/v1\/employees$/)
   })
+
+  it('includes the currency, min_salary, and max_salary query parameters when given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ currency: 'GBP', minSalary: '50000', maxSalary: '100000' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.searchParams.get('currency')).toBe('GBP')
+    expect(url.searchParams.get('min_salary')).toBe('50000')
+    expect(url.searchParams.get('max_salary')).toBe('100000')
+  })
+
+  it('omits the currency, min_salary, and max_salary query parameters when they are empty', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({ currency: '', minSalary: '', maxSalary: '' })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees$/)
+  })
+
+  it('combines search, department, country, and salary-range query parameters when all are given', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyResponse), { status: 200 }))
+
+    await fetchEmployees({
+      search: 'Ada',
+      department: 'Engineering',
+      country: 'United Kingdom',
+      currency: 'GBP',
+      minSalary: '50000',
+      maxSalary: '100000',
+    })
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    const url = new URL(String(requestUrl))
+    expect(url.searchParams.get('search')).toBe('Ada')
+    expect(url.searchParams.get('department')).toBe('Engineering')
+    expect(url.searchParams.get('country')).toBe('United Kingdom')
+    expect(url.searchParams.get('currency')).toBe('GBP')
+    expect(url.searchParams.get('min_salary')).toBe('50000')
+    expect(url.searchParams.get('max_salary')).toBe('100000')
+  })
 })
