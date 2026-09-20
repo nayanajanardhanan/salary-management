@@ -3,6 +3,13 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+def _validate_currency_format(value: str) -> str:
+    """Shared by every write schema's `currency` validator (see below)."""
+    if not value.isalpha() or value != value.upper():
+        raise ValueError("currency must be a 3-letter uppercase ISO 4217 code (e.g. 'USD').")
+    return value
+
+
 class SalaryCreate(BaseModel):
     """Request body for creating a salary record for an employee.
 
@@ -29,9 +36,43 @@ class SalaryCreate(BaseModel):
     @field_validator("currency")
     @classmethod
     def _currency_must_be_alpha_upper(cls, value: str) -> str:
-        if not value.isalpha() or value != value.upper():
-            raise ValueError("currency must be a 3-letter uppercase ISO 4217 code (e.g. 'USD').")
-        return value
+        return _validate_currency_format(value)
+
+
+class SalaryUpdate(BaseModel):
+    """Request body for replacing an employee's existing salary record.
+
+    Full replacement (PUT semantics), like `SalaryCreate`: `amount` and
+    `currency` are both required, and both are overwritten — there is no
+    partial-update (PATCH) variant in this commit, so omitting either field
+    is rejected rather than treated as "leave unchanged". Unlike
+    `SalaryCreate`, extra fields are rejected outright (`extra="forbid"`):
+    neither the salary's own surrogate id nor its owning `employee_id` can
+    be changed through this endpoint (`employee_id` comes from the path,
+    not the body), so a client attempting to pass either gets a clear `422`
+    rather than having the field silently ignored.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    amount: Decimal = Field(
+        ...,
+        ge=0,
+        max_digits=12,
+        decimal_places=2,
+        description="Salary amount, non-negative, up to 2 decimal places.",
+    )
+    currency: str = Field(
+        ...,
+        min_length=3,
+        max_length=3,
+        description="3-letter ISO 4217 currency code (e.g. 'USD').",
+    )
+
+    @field_validator("currency")
+    @classmethod
+    def _currency_must_be_alpha_upper(cls, value: str) -> str:
+        return _validate_currency_format(value)
 
 
 class SalaryRead(BaseModel):

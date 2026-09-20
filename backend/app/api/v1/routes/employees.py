@@ -8,7 +8,13 @@ from app.models.employee import Employee
 from app.models.salary import Salary
 from app.schemas.employee import EmployeeListResponse, EmployeeRead
 from app.schemas.error import ErrorResponse
-from app.schemas.salary import SalaryCalculatedValues, SalaryCreate, SalaryRead, SalarySummaryRead
+from app.schemas.salary import (
+    SalaryCalculatedValues,
+    SalaryCreate,
+    SalaryRead,
+    SalarySummaryRead,
+    SalaryUpdate,
+)
 from app.services import employee_service, salary_calculation_service, salary_service
 from app.services.employee_service import EmployeeFilters, EmployeeSort
 from app.utils.pagination import PaginationParams
@@ -140,6 +146,39 @@ def create_employee_salary(
     """
     _get_employee_or_404(db, employee_id)
     salary = salary_service.create_salary(db, employee_id, data)
+
+    return SalaryRead.model_validate(salary)
+
+
+@router.put(
+    "/{employee_id}/salary",
+    response_model=SalaryRead,
+    responses={
+        404: {
+            "model": ErrorResponse,
+            "description": "Employee not found, or the employee has no salary record",
+        },
+        422: {"model": ErrorResponse, "description": "Invalid request body or employee_id"},
+    },
+)
+def update_employee_salary(
+    data: SalaryUpdate,
+    employee_id: int = Path(..., description="The employee's numeric id."),
+    db: Session = Depends(get_db),
+) -> SalaryRead:
+    """Replace an employee's existing salary record.
+
+    Full replacement (PUT semantics): `amount` and `currency` are both
+    required and both are overwritten — there is no partial-update (PATCH)
+    variant in this commit. Raises a `404` if no employee with
+    `employee_id` exists, or if that employee has no salary record yet
+    (this endpoint only updates an existing record — see `POST .../salary`
+    to create one). `employee_id` is taken from the path and cannot be
+    changed through this endpoint; the request body rejects any other
+    field outright (see `SalaryUpdate`).
+    """
+    _get_employee_or_404(db, employee_id)
+    salary = salary_service.update_salary(db, employee_id, data)
 
     return SalaryRead.model_validate(salary)
 

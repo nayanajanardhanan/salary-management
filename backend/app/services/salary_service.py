@@ -7,10 +7,10 @@ from sqlalchemy import ColumnElement, and_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.errors import ConflictError
+from app.core.errors import ConflictError, NotFoundError
 from app.models.employee import Employee
 from app.models.salary import Salary
-from app.schemas.salary import SalaryCreate
+from app.schemas.salary import SalaryCreate, SalaryUpdate
 from app.utils.pagination import Page, PaginationParams, paginate
 from app.utils.sorting import SortOrder, apply_sort
 
@@ -99,6 +99,38 @@ def create_salary(session: Session, employee_id: int, data: SalaryCreate) -> Sal
             code="SALARY_ALREADY_EXISTS",
             message=f"Employee {employee_id} already has a salary record",
         ) from None
+
+    return salary
+
+
+def update_salary(session: Session, employee_id: int, data: SalaryUpdate) -> Salary:
+    """Replace the existing salary record for `employee_id` with `data`.
+
+    This only updates an existing record — it never creates one (see
+    `create_salary` for that) — so a missing salary raises `NotFoundError`
+    rather than being silently created. `employee_id` itself is never
+    reassigned: it's how the record is looked up, not a field `data`
+    carries. The row is mutated in place and committed within the same
+    transaction; if the commit fails, the session is rolled back (which
+    also reverts the in-memory attribute changes made below, since a
+    rollback expires every object in the session) and the exception is
+    re-raised for the centralized unexpected-error handler, rather than
+    leaving a partial update in place or exposing a raw database error.
+    """
+    salary = get_salary_for_employee(session, employee_id)
+    if salary is None:
+        raise NotFoundError(
+            code="SALARY_NOT_FOUND",
+            message=f"No salary record found for employee {employee_id}",
+        )
+
+    salary.amount = data.amount
+    salary.currency = data.currency
+    try:
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
 
     return salary
 
