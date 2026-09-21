@@ -122,7 +122,8 @@ pytest
 ```
 
 PostgreSQL integration tests and the ~10k-employee scale test are opt-in
-and excluded from the default run (see below).
+and excluded from the default run (see below). CI runs both explicitly, in
+addition to this default suite — see [`docs/ci.md`](../docs/ci.md).
 
 ## Database configuration
 
@@ -192,6 +193,9 @@ alembic upgrade head
 
 # Roll back the most recent migration
 alembic downgrade -1
+
+# Check for model changes with no matching migration (what CI runs — see docs/ci.md)
+alembic check
 ```
 
 Existing migrations (`alembic/versions/`), in order: `c97da150dfe4` (employee

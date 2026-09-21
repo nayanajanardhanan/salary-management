@@ -225,7 +225,7 @@ FastAPI serves interactive API documentation automatically while the backend is 
 ## Known Limitations
 
 * **Not deployed externally.** This application has not been deployed to any external host, cloud provider, or shared infrastructure — it has only been run and tested locally, including via the local container setup above. See [`docs/deployment.md`](./docs/deployment.md#known-limitations) for the full list of what that setup does and does not provide (no TLS, single instance only, no backups, etc.).
-* **No CI configuration.** There is no automated CI pipeline configured in this repository; tests (and container builds) are run manually/locally.
+* **CI runs on GitHub Actions** (`.github/workflows/ci.yml`) for pushes/PRs against `main`/`develop`: backend tests (SQLite and an opt-in PostgreSQL service), migration/schema-drift checks, frontend lint/typecheck/tests/build, and both Docker images building — see [`docs/ci.md`](./docs/ci.md). It does not publish images or deploy anywhere.
 * **Minimal production logging.** Timestamped, leveled logging to stdout is configured (see `backend/README.md#logging`), but there is no centralized log aggregation, structured (JSON) output, or retention policy.
 * **Salary history is intentionally out of scope.** Each employee has exactly one active salary record; changing it overwrites the previous value rather than versioning it (see `docs/requirements.md` Section 6).
 * **No cross-currency reporting.** Salary analytics are computed per currency; there is no currency conversion or unified reporting currency.

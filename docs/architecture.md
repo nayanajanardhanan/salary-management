@@ -856,9 +856,19 @@ step, not a deployment. Specifically, as of this writing:
   plainly where Docker was or wasn't available to actually build/run the
   containers when this was authored — treat that document as the source of
   truth for what has and hasn't been executed.
-* **No CI configuration**: there is no automated CI pipeline (e.g. GitHub
-  Actions) configured in this repository; tests and container builds are
-  run manually/locally.
+* **CI configuration exists**: `.github/workflows/ci.yml` (GitHub Actions)
+  runs on pushes/PRs against `main`/`develop` — backend tests (including
+  the scale suite and an opt-in PostgreSQL integration test against a CI
+  service container), a migration/schema-drift check (`alembic check`),
+  frontend lint/typecheck/tests/build, and both Docker images building. It
+  does not publish images to a registry or deploy anywhere. See
+  `docs/ci.md` for the full breakdown and what remains intentionally
+  excluded (no backend linter/type-checker is configured, so none runs in
+  CI either). This workflow's own successful execution on GitHub Actions'
+  infrastructure has not itself been observed/confirmed as part of writing
+  it — it was authored and every underlying command was validated locally;
+  its first real run on GitHub Actions is the actual first execution of the
+  workflow as a whole.
 * **No production process configuration beyond a single container**: the
   backend image's `CMD` is a single-process `uvicorn` invocation (no
   multi-worker process manager); there is no reverse proxy, TLS
@@ -926,7 +936,7 @@ unreachable) cases (`backend/tests/api/test_health.py`).
 | Authentication | Username/email + password login, stateless JWT access tokens | Simple to implement and verify; no server-side session store needed | No server-side token revocation — an issued token is valid until it expires even after sign-out |
 | One active salary per employee | Unique constraint on `salaries.employee_id`, no history table | Matches the current product need (current compensation, not a change history); simplest data model and API that satisfies it | Salary history would require a new table/versioning design if ever required later |
 | Infrastructure complexity | Single backend service, single database, no caching/microservices | Matches actual scale (~10,000 employees) | Would need re-evaluation if scale or requirements grow substantially |
-| Deployment tooling | Dockerfiles + Docker Compose for local container orchestration (Section 11.2); still no CI | Lets the containerized setup be evaluated locally without committing to a specific external host | The application has not been deployed externally; CI, a reverse proxy/TLS, and a real hosting target would still need to be added |
+| Deployment tooling | Dockerfiles + Docker Compose for local container orchestration (Section 11.2), plus a GitHub Actions CI workflow validating both (Section 11.2, `docs/ci.md`) | Lets the containerized setup be evaluated locally and validated on every change, without committing to a specific external host | The application has not been deployed externally; a reverse proxy/TLS and a real hosting target would still need to be added |
 | Database in containers | PostgreSQL (`docker-compose.yml`'s `db` service), separate from the SQLite default used outside containers | Matches the production database already documented in Section 6.1; avoids the ephemeral-filesystem/single-writer limitations of containerized SQLite | Two database configurations to keep in mind (SQLite for quick non-containerized dev, PostgreSQL for the containerized path) — both use the same models/migrations, so this is a deployment-target choice, not a schema difference |
 
 ---

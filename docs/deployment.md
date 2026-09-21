@@ -203,8 +203,12 @@ docker compose down -v       # also deletes the database volume — destructive,
   setup, run and (partially — see the verification note at the top of this
   document) checked on the machine it was authored on. No cloud provider,
   hosting platform, or shared infrastructure has been used.
-- **No CI configuration.** Building/running these containers has not been
-  wired into any automated pipeline.
+- **CI validates that both images build, but does not run or deploy them.**
+  `.github/workflows/ci.yml`'s `docker-build` job builds both Dockerfiles
+  and validates `docker-compose.yml` on every push/PR — see `docs/ci.md`.
+  It never runs `docker compose up`, so container *startup* (as opposed to
+  just building) is still only manually verified, per the note at the top
+  of this document.
 - **Single instance only.** `docker-compose.yml` runs exactly one replica
   of `backend` and `frontend` — there is no load balancing, autoscaling, or
   zero-downtime deployment process.
