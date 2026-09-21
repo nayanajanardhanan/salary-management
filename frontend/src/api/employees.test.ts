@@ -1,7 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { logout, setToken } from '../auth/authStore'
-import { createEmployee, createEmployeeSalary, fetchEmployee, fetchEmployeeDetails, fetchEmployees } from './employees'
-import type { EmployeeCreate, EmployeeRead, SalaryCreate } from '../types/employee'
+import {
+  createEmployee,
+  createEmployeeSalary,
+  fetchEmployee,
+  fetchEmployeeDetails,
+  fetchEmployees,
+  updateEmployeeSalary,
+} from './employees'
+import type { EmployeeCreate, EmployeeRead, SalaryCreate, SalaryUpdate } from '../types/employee'
 
 const emptyResponse = {
   items: [],
@@ -491,6 +498,67 @@ describe('createEmployeeSalary', () => {
       .mockResolvedValue(new Response(JSON.stringify(createdSalaryResponse), { status: 201 }))
 
     await createEmployeeSalary(1, newSalary)
+
+    const [, requestInit] = fetchMock.mock.calls[0]
+    const headers = new Headers(requestInit?.headers)
+    expect(headers.get('Authorization')).toBe('Bearer test-token')
+  })
+})
+
+describe('updateEmployeeSalary', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    logout()
+  })
+
+  const salaryUpdate: SalaryUpdate = { amount: '105000.00', currency: 'USD' }
+  const updatedSalaryResponse = { employee_id: 1, ...salaryUpdate }
+
+  it('puts to the employee salary endpoint for the given employee id, with the given payload', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(updatedSalaryResponse), { status: 200 }))
+
+    const result = await updateEmployeeSalary(1, salaryUpdate)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/1\/salary$/)
+    expect(requestInit?.method).toBe('PUT')
+    expect(JSON.parse(String(requestInit?.body))).toEqual(salaryUpdate)
+    expect(result).toEqual(updatedSalaryResponse)
+  })
+
+  it('uses a different employee id when given a different id', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ ...updatedSalaryResponse, employee_id: 42 }), { status: 200 }))
+
+    await updateEmployeeSalary(42, salaryUpdate)
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/42\/salary$/)
+  })
+
+  it('sends a JSON content type header', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(updatedSalaryResponse), { status: 200 }))
+
+    await updateEmployeeSalary(1, salaryUpdate)
+
+    const [, requestInit] = fetchMock.mock.calls[0]
+    const headers = new Headers(requestInit?.headers)
+    expect(headers.get('Content-Type')).toBe('application/json')
+  })
+
+  it('uses the shared authenticated client, attaching the stored access token', async () => {
+    setToken('test-token')
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(updatedSalaryResponse), { status: 200 }))
+
+    await updateEmployeeSalary(1, salaryUpdate)
 
     const [, requestInit] = fetchMock.mock.calls[0]
     const headers = new Headers(requestInit?.headers)

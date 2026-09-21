@@ -38,6 +38,18 @@ export interface SalaryCreate {
 }
 
 /**
+ * Mirrors `app.schemas.salary.SalaryUpdate` — the request body for
+ * `PUT /employees/{id}/salary`. Full replacement (PUT semantics), same
+ * shape as `SalaryCreate` but for an existing record: both fields are
+ * required and both are overwritten. `employee_id` is not part of the body
+ * (it comes from the route path), matching the backend schema exactly.
+ */
+export interface SalaryUpdate {
+  amount: string
+  currency: string
+}
+
+/**
  * Mirrors `app.core.currencies.SUPPORTED_CURRENCY_CODES` — the fixed set of
  * ISO 4217 currency codes the backend validates `SalaryCreate.currency`
  * against. There's no endpoint exposing this list at runtime (unlike the

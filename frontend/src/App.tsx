@@ -8,6 +8,7 @@ import { EmployeeCreatePage } from './pages/EmployeeCreatePage'
 import { EmployeeDetailsPage } from './pages/EmployeeDetailsPage'
 import { EmployeeListPage } from './pages/EmployeeListPage'
 import { EmployeeSalaryCreatePage } from './pages/EmployeeSalaryCreatePage'
+import { EmployeeSalaryEditPage } from './pages/EmployeeSalaryEditPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { NotFoundPage } from './pages/NotFoundPage'
@@ -26,6 +27,7 @@ function App() {
                 <Route path="employees/new" element={<EmployeeCreatePage />} />
                 <Route path="employees/:employeeId" element={<EmployeeDetailsPage />} />
                 <Route path="employees/:employeeId/salary/new" element={<EmployeeSalaryCreatePage />} />
+                <Route path="employees/:employeeId/salary/edit" element={<EmployeeSalaryEditPage />} />
                 <Route path="analytics" element={<AnalyticsPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Route>

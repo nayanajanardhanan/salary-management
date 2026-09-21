@@ -101,6 +101,9 @@ export function EmployeeDetailsPage() {
                 <dd>{data.salary.currency}</dd>
               </div>
             </dl>
+            <p className="employee-details__actions">
+              <Link to={`/employees/${employeeId}/salary/edit`}>Edit salary</Link>
+            </p>
           </section>
         </>
       ) : null}

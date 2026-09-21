@@ -6,6 +6,7 @@ import type {
   EmployeeSalaryDetails,
   Salary,
   SalaryCreate,
+  SalaryUpdate,
   SortOrder,
 } from '../types/employee'
 
@@ -175,6 +176,25 @@ export function createEmployee(data: EmployeeCreate): Promise<EmployeeRead> {
 export function createEmployeeSalary(employeeId: number, data: SalaryCreate): Promise<Salary> {
   return apiRequest<Salary>(`${EMPLOYEES_ENDPOINT}/${employeeId}/salary`, {
     method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Replaces the salary record for a single, existing employee via
+ * `PUT /employees/{id}/salary` (`app.api.v1.routes.employees.update_employee_salary`).
+ * Full replacement (PUT semantics): `amount` and `currency` are both sent,
+ * matching the backend's `SalaryUpdate` schema exactly — `employee_id` is
+ * taken from the path, not the body. A `404` (no such employee,
+ * `error.code === 'EMPLOYEE_NOT_FOUND'`, or the employee has no salary
+ * record yet to update, `error.code === 'SALARY_NOT_FOUND'`) or a `422`
+ * (schema validation, `error.code === 'VALIDATION_ERROR'`, with per-field
+ * details) all surface as the same normalized `ApiError` every other
+ * endpoint throws (`hooks/useUpdateSalary.ts` interprets it).
+ */
+export function updateEmployeeSalary(employeeId: number, data: SalaryUpdate): Promise<Salary> {
+  return apiRequest<Salary>(`${EMPLOYEES_ENDPOINT}/${employeeId}/salary`, {
+    method: 'PUT',
     body: JSON.stringify(data),
   })
 }
