@@ -10,8 +10,15 @@ class LoginRequest(BaseModel):
     response, so a client never learns which form matched.
     """
 
-    username_or_email: str = Field(..., min_length=1, description="HR user's username or email.")
-    password: str = Field(..., min_length=1)
+    # Bounded because this is the one `/api/v1` endpoint reachable without a
+    # token (see `app.api.v1.routes.auth`) — an unbounded string here would
+    # let an unauthenticated caller submit an arbitrarily large payload
+    # before it's hashed (password) or looked up (username_or_email).
+    # max_length matches the wider of HrUser.username (50)/`.email` (255).
+    username_or_email: str = Field(
+        ..., min_length=1, max_length=255, description="HR user's username or email."
+    )
+    password: str = Field(..., min_length=1, max_length=128)
 
 
 class TokenResponse(BaseModel):

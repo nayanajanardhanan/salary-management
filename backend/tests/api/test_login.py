@@ -195,6 +195,53 @@ def test_login_blank_password_returns_422(
     assert response.status_code == 422
 
 
+def test_login_rejects_an_overly_long_password_before_hashing_it(
+    unauthenticated_client: TestClient, db_session: Session
+) -> None:
+    """A password past the field's max_length is rejected by validation.
+
+    Guards against an unauthenticated caller submitting an arbitrarily large
+    payload to be hashed (bcrypt) on the one `/api/v1` endpoint reachable
+    without a token.
+    """
+    _hr_user(db_session)
+
+    response = unauthenticated_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "hr.admin", "password": "x" * 129},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_login_rejects_an_overly_long_username_or_email(
+    unauthenticated_client: TestClient, db_session: Session
+) -> None:
+    response = unauthenticated_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "x" * 256, "password": "irrelevant"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
+
+
+def test_login_accepts_a_password_at_the_max_length_boundary(
+    unauthenticated_client: TestClient, db_session: Session
+) -> None:
+    """128 characters is still accepted — only strictly-longer input is rejected."""
+    boundary_password = "x" * 128
+    _hr_user(db_session, password_hash=auth_service.hash_password(boundary_password))
+
+    response = unauthenticated_client.post(
+        "/api/v1/auth/login",
+        json={"username_or_email": "hr.admin", "password": boundary_password},
+    )
+
+    assert response.status_code == 200
+
+
 # --- The issued token works against protected endpoints ------------------------
 
 
