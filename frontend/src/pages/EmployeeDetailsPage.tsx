@@ -1,7 +1,10 @@
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
+import { ConfirmDialog } from '../components/common/ConfirmDialog'
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingIndicator } from '../components/common/LoadingIndicator'
+import { useDeleteSalary } from '../hooks/useDeleteSalary'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEmployeeDetails } from '../hooks/useEmployeeDetails'
 import { formatEmployeeName, formatPlainAmount } from '../utils/formatting'
@@ -30,6 +33,39 @@ export function EmployeeDetailsPage() {
 
   useDocumentTitle(data ? `${formatEmployeeName(data.employee)} - PayScope` : 'Employee details - PayScope')
 
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [justDeletedSalary, setJustDeletedSalary] = useState(false)
+  const { isDeleting, error: deleteError, submit: deleteSalary, reset: resetDeleteError } = useDeleteSalary()
+  const deleteSuccessRef = useRef<HTMLParagraphElement | null>(null)
+
+  // Moves focus to the "salary deleted" confirmation once the refreshed
+  // details settle into the no-salary state, so a screen reader user gets
+  // clear confirmation the deletion actually happened (`retry`, called from
+  // `handleConfirmDelete`, is what gets the page there).
+  useEffect(() => {
+    if (salaryUnavailable && justDeletedSalary) {
+      deleteSuccessRef.current?.focus()
+    }
+  }, [salaryUnavailable, justDeletedSalary])
+
+  function handleOpenDeleteDialog() {
+    setIsDeleteDialogOpen(true)
+  }
+
+  function handleCancelDelete() {
+    setIsDeleteDialogOpen(false)
+    resetDeleteError()
+  }
+
+  async function handleConfirmDelete() {
+    const success = await deleteSalary(parsedEmployeeId)
+    if (success) {
+      setIsDeleteDialogOpen(false)
+      setJustDeletedSalary(true)
+      retry()
+    }
+  }
+
   return (
     <section aria-labelledby="employee-details-heading">
       <p className="employee-details__back-link">
@@ -45,6 +81,11 @@ export function EmployeeDetailsPage() {
       ) : salaryUnavailable ? (
         <>
           <EmptyState message="This employee has no salary record on file, so their details can't be shown." />
+          {justDeletedSalary ? (
+            <p className="employee-details__delete-success" role="status" tabIndex={-1} ref={deleteSuccessRef}>
+              Salary deleted successfully.
+            </p>
+          ) : null}
           <p className="employee-details__actions">
             <Link to={`/employees/${employeeId}/salary/new`}>Add salary</Link>
           </p>
@@ -103,10 +144,35 @@ export function EmployeeDetailsPage() {
             </dl>
             <p className="employee-details__actions">
               <Link to={`/employees/${employeeId}/salary/edit`}>Edit salary</Link>
+              <button type="button" className="employee-details__delete-salary-button" onClick={handleOpenDeleteDialog}>
+                Delete salary
+              </button>
             </p>
           </section>
         </>
       ) : null}
+
+      <ConfirmDialog
+        isOpen={isDeleteDialogOpen}
+        title="Delete salary record?"
+        description={
+          data ? (
+            <>
+              This will permanently remove the current salary record for{' '}
+              <strong>{formatEmployeeName(data.employee)}</strong> ({data.employee.employee_code}). The employee
+              record itself will not be deleted. This action cannot be undone.
+            </>
+          ) : (
+            ''
+          )
+        }
+        confirmLabel="Delete salary"
+        confirmingLabel="Deleting…"
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        isConfirming={isDeleting}
+        error={deleteError}
+      />
     </section>
   )
 }

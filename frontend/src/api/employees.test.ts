@@ -3,6 +3,7 @@ import { logout, setToken } from '../auth/authStore'
 import {
   createEmployee,
   createEmployeeSalary,
+  deleteEmployeeSalary,
   fetchEmployee,
   fetchEmployeeDetails,
   fetchEmployees,
@@ -559,6 +560,45 @@ describe('updateEmployeeSalary', () => {
       .mockResolvedValue(new Response(JSON.stringify(updatedSalaryResponse), { status: 200 }))
 
     await updateEmployeeSalary(1, salaryUpdate)
+
+    const [, requestInit] = fetchMock.mock.calls[0]
+    const headers = new Headers(requestInit?.headers)
+    expect(headers.get('Authorization')).toBe('Bearer test-token')
+  })
+})
+
+describe('deleteEmployeeSalary', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    logout()
+  })
+
+  it('sends a DELETE request to the employee salary endpoint for the given employee id', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }))
+
+    const result = await deleteEmployeeSalary(1)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/1\/salary$/)
+    expect(requestInit?.method).toBe('DELETE')
+    expect(result).toBeUndefined()
+  })
+
+  it('uses a different employee id when given a different id', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }))
+
+    await deleteEmployeeSalary(42)
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/42\/salary$/)
+  })
+
+  it('uses the shared authenticated client, attaching the stored access token', async () => {
+    setToken('test-token')
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 204 }))
+
+    await deleteEmployeeSalary(1)
 
     const [, requestInit] = fetchMock.mock.calls[0]
     const headers = new Headers(requestInit?.headers)

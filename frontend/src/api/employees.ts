@@ -198,3 +198,19 @@ export function updateEmployeeSalary(employeeId: number, data: SalaryUpdate): Pr
     body: JSON.stringify(data),
   })
 }
+
+/**
+ * Deletes the salary record for a single, existing employee via
+ * `DELETE /employees/{id}/salary` (`app.api.v1.routes.employees.delete_employee_salary`).
+ * Deletes only the `Salary` row — the employee record itself is never
+ * affected. A `404` (no such employee, `error.code === 'EMPLOYEE_NOT_FOUND'`,
+ * or the employee has no salary record to delete,
+ * `error.code === 'SALARY_NOT_FOUND'`) surfaces as the same normalized
+ * `ApiError` every other endpoint throws (`hooks/useDeleteSalary.ts`
+ * interprets it). Resolves with nothing on success (`204 No Content`).
+ */
+export function deleteEmployeeSalary(employeeId: number): Promise<void> {
+  return apiRequest<void>(`${EMPLOYEES_ENDPOINT}/${employeeId}/salary`, {
+    method: 'DELETE',
+  })
+}
