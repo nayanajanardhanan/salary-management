@@ -4,8 +4,32 @@ import type { ApiErrorPayload } from '../types/api'
 /**
  * Backend origin, configured once via `VITE_API_BASE_URL` (see `.env.example`)
  * instead of being hard-coded or repeated per API module.
+ *
+ * `VITE_API_BASE_URL` is resolved by Vite at *build* time (it's baked into
+ * the bundle, not read at container/server runtime — see
+ * `frontend/README.md` and `docs/deployment.md`). The `localhost:8000`
+ * fallback only applies to `import.meta.env.DEV` (the Vite dev server,
+ * `npm run dev`), so local development stays zero-config; a real build
+ * (`npm run build`, or the Docker image build) fails loudly instead of
+ * silently shipping a `localhost` URL that could never work outside a
+ * developer's own machine.
  */
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+function resolveApiBaseUrl(): string {
+  const configured = import.meta.env.VITE_API_BASE_URL
+  if (configured) {
+    return configured
+  }
+  if (import.meta.env.DEV) {
+    return 'http://localhost:8000'
+  }
+  throw new Error(
+    'VITE_API_BASE_URL is not set. It must be provided at build time for ' +
+      'anything other than `npm run dev` (e.g. `npm run build`, or ' +
+      '`docker build --build-arg VITE_API_BASE_URL=...`). See frontend/README.md.',
+  )
+}
+
+export const API_BASE_URL = resolveApiBaseUrl()
 
 /** A failed request, normalized from the backend's `{error: {code, message, details}}` envelope. */
 export class ApiError extends Error {

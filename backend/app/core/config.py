@@ -36,6 +36,14 @@ class Settings(BaseSettings):
     opt-in seeding steps.
     """
 
+    log_level: str = "INFO"
+    """Root logger level (see `app.core.logging.configure_logging`), one of
+    Python's standard level names (`DEBUG`, `INFO`, `WARNING`, `ERROR`,
+    `CRITICAL`; case-insensitive). Not validated here — an unrecognized
+    value fails loudly at startup via `logging.Logger.setLevel`, rather than
+    silently falling back to a default.
+    """
+
     cors_origins: Annotated[list[str], NoDecode] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",

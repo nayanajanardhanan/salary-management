@@ -97,6 +97,20 @@ class ConflictError(AppError):
     status_code = status.HTTP_409_CONFLICT
 
 
+class ServiceUnavailableError(AppError):
+    """Raised when a dependency the request needs (e.g. the database) is unreachable.
+
+    Used by the `/health/ready` readiness check (`app.api.routes.health`) so
+    container orchestration (e.g. Docker Compose's `service_healthy`
+    condition) can tell "the process is up but can't yet serve real
+    requests" apart from a genuine `500`. Never carries connection strings,
+    credentials, or other database details in `message`/`details` — see
+    `docs/architecture.md` Section 5.
+    """
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
+
 _STATUS_CODE_TO_ERROR_CODE = {
     status.HTTP_400_BAD_REQUEST: "BAD_REQUEST",
     status.HTTP_401_UNAUTHORIZED: "UNAUTHORIZED",
@@ -105,6 +119,7 @@ _STATUS_CODE_TO_ERROR_CODE = {
     status.HTTP_405_METHOD_NOT_ALLOWED: "METHOD_NOT_ALLOWED",
     status.HTTP_409_CONFLICT: "CONFLICT",
     status.HTTP_422_UNPROCESSABLE_CONTENT: "UNPROCESSABLE_ENTITY",
+    status.HTTP_503_SERVICE_UNAVAILABLE: "SERVICE_UNAVAILABLE",
 }
 
 

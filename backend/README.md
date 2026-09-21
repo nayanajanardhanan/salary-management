@@ -29,7 +29,20 @@ python -m app.scripts.seed    # optional: sample employees/salaries + a dev HR l
 uvicorn app.main:app --reload
 ```
 
-Then check `GET http://127.0.0.1:8000/health`.
+Then check `GET http://127.0.0.1:8000/health`. `--reload` is for local
+development only; see [`docs/deployment.md`](../docs/deployment.md) for the
+production-oriented container image and startup command (no `--reload`).
+
+## Health and readiness
+
+| Endpoint | Checks | Auth required |
+|---|---|---|
+| `GET /health` | The process is up. Liveness only — does not touch the database. | No |
+| `GET /health/ready` | The above, plus a `SELECT 1` round trip to the database (no data is read or written). Returns `503` (`DATABASE_UNAVAILABLE`) if the database is unreachable. | No |
+
+Both are intentionally unauthenticated so container/orchestration tooling
+can probe them without credentials. `/health/ready` is what
+`docker-compose.yml` uses for the backend service's health check.
 
 ## Authentication
 
@@ -125,6 +138,10 @@ environment variable (see `app/core/config.py`); it is never hardcoded.
 * For PostgreSQL (e.g. production, or to verify Postgres-specific behavior),
   set `PAYSCOPE_DATABASE_URL` to a `postgresql+psycopg://...` URL in `.env`.
 
+See [`docs/deployment.md`](../docs/deployment.md) for running the backend
+(and a PostgreSQL database) in containers instead, including which
+environment variables are required there.
+
 Reusable database building blocks live under `app/db/`:
 
 * `app/db/session.py` — `create_db_engine()` (engine factory), the shared
@@ -182,3 +199,23 @@ and salary tables), `5de088d1fe56` (`hr_users` table, for HR login — see
 [Authentication](#authentication)). Run `alembic upgrade head` after a fresh
 `pip install -e ".[dev]"` / `.env` setup to create the database schema
 before starting the app or running the seed script.
+
+`alembic` is a base (non-dev) dependency in `pyproject.toml` — applying
+migrations is a deployment-time operation, so it's installed in the
+container image too (see [`docs/deployment.md`](../docs/deployment.md)),
+not only in developer environments.
+
+## Logging
+
+Server-side logging (see `docs/architecture.md` Section 4.7 for what is and
+is not logged) is configured once at startup (`app/core/logging.py`):
+timestamped, leveled log lines written to stdout, which container runtimes
+(Docker, Docker Compose) capture automatically via `docker logs`/
+`docker compose logs`.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `PAYSCOPE_LOG_LEVEL` | Root logger level: `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL` (case-insensitive). An unrecognized value fails at startup rather than silently defaulting. | `INFO` |
+
+This is a minimal, single-process logging setup — there is no centralized
+log aggregation, structured/JSON output, or file-based log rotation.

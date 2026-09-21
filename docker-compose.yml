@@ -1,0 +1,87 @@
+# Local container orchestration for PayScope.
+#
+# This runs the application entirely on this machine, for local evaluation
+# of the containerized setup. It is NOT a deployment to any external
+# service (see docs/deployment.md for what "deployed" would actually
+# require, and what remains unverified about this setup).
+#
+# The application defaults to SQLite for non-containerized local
+# development (backend/.env.example), but docs/architecture.md has always
+# documented PostgreSQL as the intended production database, and the
+# backend already depends on `psycopg` and is tested against PostgreSQL via
+# an opt-in test (backend/tests/db/test_postgres_integration.py). This
+# compose file therefore runs PostgreSQL as the `db` service — the app's
+# own SQLAlchemy models and Alembic migrations are unchanged and apply to
+# either database. It intentionally does not touch backend/payscope.db
+# (the local SQLite file used by non-containerized development); the two
+# setups are independent and can coexist.
+#
+# Copy .env.example (repo root) to .env and set real values before running
+# `docker compose up` — see docs/deployment.md for the full walkthrough,
+# including running migrations and seeding data (the seed script is never
+# run automatically by this file).
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-payscope}
+      POSTGRES_USER: ${POSTGRES_USER:-payscope}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env before starting}
+    volumes:
+      - payscope_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-payscope} -d ${POSTGRES_DB:-payscope}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PAYSCOPE_APP_NAME: PayScope API
+      PAYSCOPE_ENVIRONMENT: ${PAYSCOPE_ENVIRONMENT:-production}
+      PAYSCOPE_DEBUG: ${PAYSCOPE_DEBUG:-false}
+      PAYSCOPE_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-payscope}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env before starting}@db:5432/${POSTGRES_DB:-payscope}
+      PAYSCOPE_JWT_SECRET_KEY: ${PAYSCOPE_JWT_SECRET_KEY:?Set PAYSCOPE_JWT_SECRET_KEY in .env before starting}
+      PAYSCOPE_JWT_ALGORITHM: ${PAYSCOPE_JWT_ALGORITHM:-HS256}
+      PAYSCOPE_JWT_EXPIRE_MINUTES: ${PAYSCOPE_JWT_EXPIRE_MINUTES:-60}
+      PAYSCOPE_HR_SEED_USERNAME: ${PAYSCOPE_HR_SEED_USERNAME:-hr.admin}
+      PAYSCOPE_HR_SEED_EMAIL: ${PAYSCOPE_HR_SEED_EMAIL:-hr.admin@payscope.local}
+      PAYSCOPE_HR_SEED_PASSWORD: ${PAYSCOPE_HR_SEED_PASSWORD:-}
+      PAYSCOPE_CORS_ORIGINS: ${PAYSCOPE_CORS_ORIGINS:-http://localhost:5173}
+      PAYSCOPE_LOG_LEVEL: ${PAYSCOPE_LOG_LEVEL:-INFO}
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Baked into the static bundle at image-build time (see
+        # frontend/Dockerfile and src/api/client.ts) — this default only
+        # makes sense because the backend's port is also published to the
+        # host below, so a browser on this machine can reach it at
+        # localhost. Set VITE_API_BASE_URL explicitly for any other target.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:8000}
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+
+volumes:
+  payscope_db_data:

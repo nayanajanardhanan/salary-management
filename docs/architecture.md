@@ -125,7 +125,7 @@ salary-management/
 │   │   ├── main.py                       # FastAPI app creation, CORS, router registration
 │   │   ├── api/
 │   │   │   ├── routes/
-│   │   │   │   └── health.py             # Unversioned GET /health liveness check
+│   │   │   │   └── health.py             # Unversioned GET /health (liveness), /health/ready (DB check)
 │   │   │   └── v1/
 │   │   │       ├── routes/
 │   │   │       │   ├── auth.py           # POST /api/v1/auth/login
@@ -234,9 +234,10 @@ Routes are grouped by resource. Most routes sit under a versioned prefix
 (`/api/v1/...`): `auth.py` for login, `employees.py` for employee CRUD plus
 the employee-scoped salary sub-resource (create/view/update/delete an
 employee's salary), `salaries.py` for a cross-employee salary listing, and
-`analytics.py` for salary analytics. One route, `GET /health`, is
-intentionally unversioned (`api/routes/health.py`) as a basic liveness
-check, unrelated to the versioned business API. Every `/api/v1/*` router
+`analytics.py` for salary analytics. Two routes, `GET /health` (liveness)
+and `GET /health/ready` (database readiness — Section 11.3), are
+intentionally unversioned (`api/routes/health.py`), unrelated to the
+versioned business API. Every `/api/v1/*` router
 (employees, salaries, analytics) declares `dependencies=[Depends(require_auth)]`
 at the router level, so authentication is enforced for every route in that
 module by construction rather than per-endpoint (`auth.py`'s login route is
@@ -317,8 +318,10 @@ optional `details`, and the HTTP status to respond with) — e.g.
 a duplicate `employee_code` or an attempt to create a second salary for the
 same employee), `ValidationError` (422, for application-level checks a
 Pydantic schema alone can't express, such as an unsupported `sort_by`
-value) — are raised by routes/services and translated by a FastAPI
-exception handler into a **consistent JSON error response** (Section 7.5).
+value), `ServiceUnavailableError` (503, currently only raised by
+`/health/ready` when the database is unreachable — Section 11.3) — are
+raised by routes/services and translated by a FastAPI exception handler
+into a **consistent JSON error response** (Section 7.5).
 Three further handlers extend the same response shape to cases outside
 `AppError`: FastAPI/Starlette's own `HTTPException` (e.g. an unmatched
 route), `RequestValidationError` (Pydantic query/path parameter validation
@@ -601,6 +604,7 @@ definitions in `backend/app/api/`.
 | Method | Path | Purpose | Auth required |
 |---|---|---|---|
 | GET | `/health` | Liveness check | No |
+| GET | `/health/ready` | Readiness check (verifies database connectivity; `503` if unreachable) | No |
 | POST | `/api/v1/auth/login` | Sign in, obtain a JWT access token | No |
 | POST | `/api/v1/employees` | Create an employee | Yes |
 | GET | `/api/v1/employees` | List employees (search/filter/sort/paginate) | Yes |
@@ -661,9 +665,11 @@ authentication, `404` for a missing resource, `409` for a conflicting write
 (e.g. a duplicate `employee_code`, or creating a second salary for an
 employee that already has one), `422` for request validation and other
 rejected input, `500` for an unexpected failure (with a generic message;
-specifics are logged server-side only, never returned). This supports
-FR-8.1–FR-8.3 and lets the frontend's API client handle all errors
-uniformly (Section 5.3).
+specifics are logged server-side only, never returned), `503` when a
+dependency the request needs isn't reachable (currently only
+`/health/ready`'s database check — Section 11.3). This supports FR-8.1–FR-8.3
+and lets the frontend's API client handle all errors uniformly
+(Section 5.3).
 
 ### 7.6 API Versioning Approach
 
@@ -823,32 +829,66 @@ Frontend (Vitest + React Testing Library):
   default; an opt-in marker runs a subset against a real PostgreSQL
   instance when one is available. Frontend tests (Vitest) run independently.
 
-### 11.2 Deployment Status
+### 11.2 Containerization and Deployment Status
 
-**This application has not been deployed anywhere.** Everything in Section
-11.1 has been run and verified locally only. Specifically, as of this
-writing:
+**This application has not been deployed to any external host, cloud
+provider, or shared infrastructure.** A local container setup exists
+(`backend/Dockerfile`, `frontend/Dockerfile`, `docker-compose.yml` at the
+repository root) and is documented in `docs/deployment.md`, but running it
+starts containers on your own machine only — it is a deployment-preparation
+step, not a deployment. Specifically, as of this writing:
 
-* **No containerization**: no Dockerfile or docker-compose configuration
-  exists in this repository.
+* **Containerization**: implemented. The backend image installs its
+  (now-runtime) dependencies including Alembic and runs
+  `uvicorn app.main:app --host 0.0.0.0 --port 8000` (no `--reload`) as a
+  non-root user. The frontend image is a multi-stage build — `node:20-slim`
+  compiles the production bundle, `nginx:1.27-alpine` serves the static
+  output with an SPA fallback route. `docker-compose.yml` adds a
+  PostgreSQL `db` service (Section 6.1), with named-volume persistence and
+  a `pg_isready` health check; the backend's health check uses
+  `/health/ready` (Section 11.3). See `docs/deployment.md` for the full
+  walkthrough, including why PostgreSQL is used here even though
+  non-containerized local development defaults to SQLite.
+* **Not independently verified by execution in every environment**: the
+  Dockerfiles/compose configuration were written from direct inspection of
+  the application's real entry points and dependencies (not assumed) and
+  the compose YAML was syntax-checked, but `docs/deployment.md` states
+  plainly where Docker was or wasn't available to actually build/run the
+  containers when this was authored — treat that document as the source of
+  truth for what has and hasn't been executed.
 * **No CI configuration**: there is no automated CI pipeline (e.g. GitHub
-  Actions) configured in this repository; tests are run manually/locally.
-* **No production process configuration**: the only documented backend
-  start command is the development one (`uvicorn --reload`); there is no
-  documented production process-manager command (e.g. multiple workers,
-  without `--reload`) or reverse-proxy configuration.
-* **No production logging configuration**: server-side error logging
-  exists (Section 4.7) via Python's standard `logging` module, but there is
-  no application-configured log level, format, or aggregation destination
-  suited to a production environment — it relies on the ASGI server's
-  default behavior.
+  Actions) configured in this repository; tests and container builds are
+  run manually/locally.
+* **No production process configuration beyond a single container**: the
+  backend image's `CMD` is a single-process `uvicorn` invocation (no
+  multi-worker process manager); there is no reverse proxy, TLS
+  termination, autoscaling, or zero-downtime deployment process.
+* **Logging**: a minimal, container-friendly configuration now exists
+  (`app/core/logging.py`, timestamped/leveled output to stdout, level set
+  via `PAYSCOPE_LOG_LEVEL`) — see Section 4.7 for what is logged. This is
+  still not centralized log aggregation or structured (JSON) output.
 * Environment-driven configuration, fail-closed secret handling (Section
-  10), and an explicit CORS origin allowlist are all in place and would
-  support a deployment, but a real deployment (choosing a host, provisioning
-  PostgreSQL, setting production environment variables, and running
-  migrations against it) has not been performed or verified.
+  10), and an explicit CORS origin allowlist are all in place and support
+  the local container setup, but a real external deployment (choosing a
+  host, provisioning a production PostgreSQL instance, setting production
+  secrets, TLS, and running migrations against it) has not been performed.
 
-### 11.3 Known Limitations
+### 11.3 A Database Readiness Check
+
+`GET /health/ready` (`app/api/routes/health.py`) is distinct from the
+liveness-only `GET /health` (Section 4.1): it runs a minimal, read-only
+`SELECT 1` against the database and returns `503`
+(`ServiceUnavailableError`, code `DATABASE_UNAVAILABLE`) if that fails,
+without exposing the connection string or any other database detail in the
+response. Both routes are intentionally unauthenticated, like the rest of
+the unversioned health router, so container/orchestration tooling can probe
+them without credentials. `docker-compose.yml` uses `/health/ready` as the
+backend service's health check, so dependent services only start once the
+backend can actually reach the database — not merely once the process is
+up. Covered by tests for both the success and failure (database
+unreachable) cases (`backend/tests/api/test_health.py`).
+
+### 11.4 Known Limitations
 
 * Salary history/versioning is intentionally not implemented (Section 6.3 /
   `requirements.md` Section 5.4).
@@ -861,6 +901,10 @@ writing:
   tested for narrow (tablet/mobile) viewports.
 * There is no server-side session/token revocation: an issued JWT remains
   valid until it expires, even after sign-out (Section 4.8 / Section 5.8).
+* The frontend's `VITE_API_BASE_URL` is resolved at build time, not
+  container-start time — changing it for a different target requires
+  rebuilding the frontend image, not just changing an environment variable
+  (Section 5.3, `docs/deployment.md`).
 * This document is not a security audit; see the note at the end of
   Section 10.
 
@@ -882,7 +926,8 @@ writing:
 | Authentication | Username/email + password login, stateless JWT access tokens | Simple to implement and verify; no server-side session store needed | No server-side token revocation — an issued token is valid until it expires even after sign-out |
 | One active salary per employee | Unique constraint on `salaries.employee_id`, no history table | Matches the current product need (current compensation, not a change history); simplest data model and API that satisfies it | Salary history would require a new table/versioning design if ever required later |
 | Infrastructure complexity | Single backend service, single database, no caching/microservices | Matches actual scale (~10,000 employees) | Would need re-evaluation if scale or requirements grow substantially |
-| Deployment tooling | None (local `uvicorn`/`npm run dev` only; no Dockerfile or CI) | Not required to satisfy the current functional requirements | The application has not been deployed; containerization/CI would need to be added before a real deployment |
+| Deployment tooling | Dockerfiles + Docker Compose for local container orchestration (Section 11.2); still no CI | Lets the containerized setup be evaluated locally without committing to a specific external host | The application has not been deployed externally; CI, a reverse proxy/TLS, and a real hosting target would still need to be added |
+| Database in containers | PostgreSQL (`docker-compose.yml`'s `db` service), separate from the SQLite default used outside containers | Matches the production database already documented in Section 6.1; avoids the ephemeral-filesystem/single-writer limitations of containerized SQLite | Two database configurations to keep in mind (SQLite for quick non-containerized dev, PostgreSQL for the containerized path) — both use the same models/migrations, so this is a deployment-target choice, not a schema difference |
 
 ---
 

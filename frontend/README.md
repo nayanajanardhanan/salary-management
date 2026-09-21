@@ -18,6 +18,15 @@ npm install
 cp .env.example .env   # adjust VITE_API_BASE_URL if the backend isn't on localhost:8000
 ```
 
+`VITE_API_BASE_URL` is resolved at **build** time, not read at runtime (see
+`src/api/client.ts`): `npm run dev` falls back to `http://localhost:8000` on
+its own if it's unset, but `npm run build` (and the Docker image build —
+see [`docs/deployment.md`](../docs/deployment.md)) require it to be set
+explicitly and fail loudly at runtime in the browser (a clear thrown error,
+not a silently wrong URL) if it isn't. Set it in `.env` for `npm run build`,
+or pass it as `--build-arg VITE_API_BASE_URL=...` when building the Docker
+image.
+
 ## Authentication
 
 The app requires signing in as an HR user before any employee, salary, or

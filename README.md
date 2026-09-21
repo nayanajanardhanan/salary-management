@@ -40,13 +40,16 @@ All employee and salary data is only reachable after signing in — there are no
 ```
 salary-management/
 ├── README.md              # This file
+├── docker-compose.yml     # Local container orchestration (see docs/deployment.md)
+├── .env.example           # Environment variables for docker-compose.yml
 ├── docs/
 │   ├── requirements.md    # Product requirements
-│   └── architecture.md    # Technical architecture
+│   ├── architecture.md    # Technical architecture
+│   └── deployment.md      # Local container deployment guide
 ├── backend/                # FastAPI application (see backend/README.md)
 │   ├── app/
 │   │   ├── api/            # Route modules (v1/routes/, plus an unversioned health route)
-│   │   ├── core/           # Settings, currency allowlist, error handling
+│   │   ├── core/           # Settings, currency allowlist, error handling, logging
 │   │   ├── data_generation/# Sample employee/salary data generator
 │   │   ├── db/              # Engine/session setup
 │   │   ├── models/          # SQLAlchemy models (Employee, Salary, HrUser)
@@ -55,6 +58,7 @@ salary-management/
 │   │   ├── services/        # Business logic
 │   │   └── utils/           # Pagination/sorting helpers
 │   ├── alembic/             # Database migrations
+│   ├── Dockerfile           # Backend container image
 │   └── tests/                # Backend test suite
 └── frontend/                # React + TypeScript SPA (see frontend/README.md)
     ├── src/
@@ -64,6 +68,8 @@ salary-management/
     │   ├── hooks/              # Data-fetching and mutation hooks
     │   ├── pages/               # Routed top-level views
     │   └── types/                # Shared TypeScript types
+    ├── Dockerfile               # Frontend container image (multi-stage: build, then nginx)
+    ├── nginx.conf                # Static-file serving + SPA routing fallback
     └── tests/                    # Cross-cutting frontend tests
 ```
 
@@ -116,6 +122,7 @@ See [`frontend/README.md`](./frontend/README.md) for full details.
 | `PAYSCOPE_JWT_EXPIRE_MINUTES` | Access token lifetime, in minutes. | `60` |
 | `PAYSCOPE_HR_SEED_USERNAME` / `PAYSCOPE_HR_SEED_EMAIL` / `PAYSCOPE_HR_SEED_PASSWORD` | Credentials for the development HR user created by the seed script. HR-user seeding is skipped if the password is unset. | `hr.admin` / `hr.admin@payscope.local` / unset |
 | `PAYSCOPE_CORS_ORIGINS` | Comma-separated list of allowed browser origins. | Vite dev server origins (`http://localhost:5173`, `http://127.0.0.1:5173`) |
+| `PAYSCOPE_LOG_LEVEL` | Root logger level (`DEBUG`/`INFO`/`WARNING`/`ERROR`/`CRITICAL`). | `INFO` |
 
 **Frontend** (`frontend/.env`, see [`frontend/.env.example`](./frontend/.env.example)):
 
@@ -163,7 +170,7 @@ cd backend
 uvicorn app.main:app --reload
 ```
 
-Check `GET http://127.0.0.1:8000/health` to confirm it started. Interactive API documentation (Swagger UI) is available at `http://127.0.0.1:8000/docs` while the backend is running.
+Check `GET http://127.0.0.1:8000/health` to confirm it started (liveness only), or `GET http://127.0.0.1:8000/health/ready` to also confirm it can reach the database. Interactive API documentation (Swagger UI) is available at `http://127.0.0.1:8000/docs` while the backend is running.
 
 ## Running the Frontend
 
@@ -188,6 +195,26 @@ cd frontend
 npm run build     # type-checks (tsc -b) and builds a production bundle into dist/
 ```
 
+## Container Deployment (Local)
+
+The backend and frontend can each be built and run as containers, alongside
+a PostgreSQL database, entirely on your own machine, via Docker Compose:
+
+```bash
+cp .env.example .env    # then set POSTGRES_PASSWORD and PAYSCOPE_JWT_SECRET_KEY
+docker compose up -d --build
+docker compose run --rm backend alembic upgrade head
+docker compose run --rm backend python -m app.scripts.seed --count 10000
+```
+
+This is local container orchestration for evaluating the containerized
+setup — **not** a deployment to any external service. See
+[`docs/deployment.md`](./docs/deployment.md) for the full walkthrough
+(required environment variables, health/readiness checks, viewing logs,
+stopping containers, and known limitations), and for why this setup uses
+PostgreSQL in containers even though non-containerized local development
+defaults to SQLite.
+
 ## API Documentation
 
 FastAPI serves interactive API documentation automatically while the backend is running:
@@ -197,10 +224,9 @@ FastAPI serves interactive API documentation automatically while the backend is 
 
 ## Known Limitations
 
-* **Not deployed.** This application has not been deployed anywhere; it has only been run and tested locally.
-* **No containerization.** No Dockerfile or docker-compose configuration exists in this repository.
-* **No CI configuration.** There is no automated CI pipeline configured in this repository; tests are run locally.
-* **Minimal production logging.** Server-side error logging exists (see `docs/architecture.md`), but there is no application-wide logging configuration (format, level, aggregation) suited to a production deployment.
+* **Not deployed externally.** This application has not been deployed to any external host, cloud provider, or shared infrastructure — it has only been run and tested locally, including via the local container setup above. See [`docs/deployment.md`](./docs/deployment.md#known-limitations) for the full list of what that setup does and does not provide (no TLS, single instance only, no backups, etc.).
+* **No CI configuration.** There is no automated CI pipeline configured in this repository; tests (and container builds) are run manually/locally.
+* **Minimal production logging.** Timestamped, leveled logging to stdout is configured (see `backend/README.md#logging`), but there is no centralized log aggregation, structured (JSON) output, or retention policy.
 * **Salary history is intentionally out of scope.** Each employee has exactly one active salary record; changing it overwrites the previous value rather than versioning it (see `docs/requirements.md` Section 6).
 * **No cross-currency reporting.** Salary analytics are computed per currency; there is no currency conversion or unified reporting currency.
 
