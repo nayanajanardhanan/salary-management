@@ -26,7 +26,9 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
           <tr>
             <th scope="col">Name</th>
             <th scope="col">Department</th>
-            <th scope="col">Country</th>
+            <th scope="col" className="col-country">
+              Country
+            </th>
             <th scope="col">Salary</th>
           </tr>
         </thead>
@@ -37,11 +39,13 @@ export function EmployeeTable({ employees }: EmployeeTableProps) {
                 <Link to={`/employees/${employee.id}`}>{formatEmployeeName(employee)}</Link>
               </th>
               <td>{employee.department}</td>
-              <td>{employee.country}</td>
-              <td>
-                {employee.salary
-                  ? formatSalaryAmount(employee.salary.amount, employee.salary.currency)
-                  : 'Not set'}
+              <td className="col-country">{employee.country}</td>
+              <td className="employee-table__salary-cell">
+                {employee.salary ? (
+                  formatSalaryAmount(employee.salary.amount, employee.salary.currency)
+                ) : (
+                  <span className="employee-table__salary-empty">Not set</span>
+                )}
               </td>
             </tr>
           ))}

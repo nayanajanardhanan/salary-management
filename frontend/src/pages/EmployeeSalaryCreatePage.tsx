@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingIndicator } from '../components/common/LoadingIndicator'
+import { ArrowLeftIcon, CheckCircleIcon } from '../components/common/icons'
 import { useCreateSalary } from '../hooks/useCreateSalary'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEmployee } from '../hooks/useEmployee'
@@ -127,16 +128,21 @@ export function EmployeeSalaryCreatePage() {
     return (
       <section aria-labelledby="salary-create-heading">
         <h1 id="salary-create-heading">Add Salary</h1>
-        <div className="salary-create__success" role="status">
-          <p>
-            A salary of <strong>{formatSalaryAmount(createdSalary.amount, createdSalary.currency)}</strong> was
-            added for <strong>{formatEmployeeName(employee)}</strong> ({employee.employee_code}).
-          </p>
-          <p className="salary-create__success-actions">
-            <Link to={`/employees/${employee.id}`}>View employee details</Link>
-            {' · '}
-            <Link to="/employees">Back to employee listing</Link>
-          </p>
+        <div className="success-panel" role="status">
+          <span className="success-panel__icon" aria-hidden="true">
+            <CheckCircleIcon width={20} height={20} />
+          </span>
+          <div className="success-panel__body">
+            <p>
+              A salary of <strong>{formatSalaryAmount(createdSalary.amount, createdSalary.currency)}</strong> was
+              added for <strong>{formatEmployeeName(employee)}</strong> ({employee.employee_code}).
+            </p>
+            <p className="salary-create__success-actions">
+              <Link to={`/employees/${employee.id}`}>View employee details</Link>
+              {' · '}
+              <Link to="/employees">Back to employee listing</Link>
+            </p>
+          </div>
         </div>
       </section>
     )
@@ -144,14 +150,23 @@ export function EmployeeSalaryCreatePage() {
 
   return (
     <section aria-labelledby="salary-create-heading">
-      <h1 id="salary-create-heading">Add Salary</h1>
-      <p className="salary-create__back-link">
-        {notFound ? (
-          <Link to="/employees">&larr; Back to employee listing</Link>
-        ) : (
-          <Link to={`/employees/${employeeId}`}>&larr; Back to employee details</Link>
-        )}
-      </p>
+      {notFound ? (
+        <Link to="/employees" className="back-link">
+          <ArrowLeftIcon width={16} height={16} />
+          Back to employee listing
+        </Link>
+      ) : (
+        <Link to={`/employees/${employeeId}`} className="back-link">
+          <ArrowLeftIcon width={16} height={16} />
+          Back to employee details
+        </Link>
+      )}
+
+      <div className="page-header">
+        <div className="page-header__text">
+          <h1 id="salary-create-heading">Add Salary</h1>
+        </div>
+      </div>
 
       {isLoading ? (
         <LoadingIndicator label="Loading employee…" />
@@ -161,18 +176,18 @@ export function EmployeeSalaryCreatePage() {
         <ErrorMessage message={error} onRetry={retry} />
       ) : employee ? (
         <>
-          <p className="salary-create__identity">
+          <p className="form-identity">
             Adding a salary for <strong>{formatEmployeeName(employee)}</strong> ({employee.employee_code}).
           </p>
 
-          <form className="salary-create-form" onSubmit={handleSubmit} noValidate>
+          <form className="salary-create-form form-card" onSubmit={handleSubmit} noValidate>
             <p className="salary-create-form__required-note">
-              Fields marked <span aria-hidden="true">*</span> are required.
+              Fields marked <span className="required-mark" aria-hidden="true">*</span> are required.
             </p>
 
             <div className="field">
               <label htmlFor="salary-amount-input">
-                {FIELD_LABELS.amount} <span aria-hidden="true">*</span>
+                {FIELD_LABELS.amount} <span className="required-mark" aria-hidden="true">*</span>
               </label>
               <input
                 id="salary-amount-input"
@@ -198,7 +213,7 @@ export function EmployeeSalaryCreatePage() {
 
             <div className="field">
               <label htmlFor="salary-currency-input">
-                {FIELD_LABELS.currency} <span aria-hidden="true">*</span>
+                {FIELD_LABELS.currency} <span className="required-mark" aria-hidden="true">*</span>
               </label>
               <select
                 id="salary-currency-input"
@@ -229,8 +244,15 @@ export function EmployeeSalaryCreatePage() {
 
             {formError ? <ErrorMessage message={formError} /> : null}
 
-            <button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Adding salary…' : 'Add salary'}
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <span className="btn-spinner" aria-hidden="true" />
+                  Adding salary…
+                </>
+              ) : (
+                'Add salary'
+              )}
             </button>
           </form>
         </>

@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
-import { LoadingIndicator } from '../components/common/LoadingIndicator'
+import { LoadingRegion, SkeletonTable } from '../components/common/LoadingIndicator'
+import { PlusIcon } from '../components/common/icons'
 import { EmployeeFilters } from '../components/employee/EmployeeFilters'
 import { EmployeePagination } from '../components/employee/EmployeePagination'
 import { EmployeeSearch } from '../components/employee/EmployeeSearch'
@@ -201,11 +202,21 @@ export function EmployeeListPage() {
 
   return (
     <section aria-labelledby="employee-list-heading">
-      <h1 id="employee-list-heading">Employees</h1>
-
-      <p className="employee-list__actions">
-        <Link to="/employees/new">Add employee</Link>
-      </p>
+      <div className="page-header">
+        <div className="page-header__text">
+          <span className="page-header__eyebrow">Employees</span>
+          <h1 id="employee-list-heading">Employees</h1>
+          <p className="page-header__description">
+            Search, filter, sort, and manage every employee and their current salary record.
+          </p>
+        </div>
+        <div className="page-header__actions">
+          <Link to="/employees/new" className="btn btn-primary">
+            <PlusIcon width={16} height={16} />
+            Add employee
+          </Link>
+        </div>
+      </div>
 
       <EmployeeSearch
         value={searchInput}
@@ -250,11 +261,15 @@ export function EmployeeListPage() {
       />
 
       {isLoading ? (
-        <LoadingIndicator label="Loading employees…" />
+        <LoadingRegion label="Loading employees…">
+          <SkeletonTable rows={8} columns={4} />
+        </LoadingRegion>
       ) : error ? (
         <ErrorMessage message={error} onRetry={retry} />
       ) : data && data.items.length > 0 ? (
-        <EmployeeTable employees={data.items} />
+        <div className="table-card">
+          <EmployeeTable employees={data.items} />
+        </div>
       ) : (
         <EmptyState
           message={describeEmptyResult(

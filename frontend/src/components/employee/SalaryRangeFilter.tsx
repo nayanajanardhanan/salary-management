@@ -101,9 +101,11 @@ export function SalaryRangeFilter({
         />
       </div>
 
-      <button type="submit">Apply salary filter</button>
+      <button type="submit" className="btn btn-primary">
+        Apply salary filter
+      </button>
       {hasActiveFilter ? (
-        <button type="button" onClick={onClear}>
+        <button type="button" className="btn" onClick={onClear}>
           Clear salary filter
         </button>
       ) : null}

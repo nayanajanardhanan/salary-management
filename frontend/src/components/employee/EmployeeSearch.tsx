@@ -1,4 +1,5 @@
 import type { FormEvent } from 'react'
+import { SearchIcon } from '../common/icons'
 
 interface EmployeeSearchProps {
   value: string
@@ -23,19 +24,24 @@ export function EmployeeSearch({ value, onChange, onSubmit, onClear }: EmployeeS
 
   return (
     <form className="employee-search" role="search" onSubmit={handleSubmit}>
-      <div className="field">
+      <div className="field field-grow">
         <label htmlFor="employee-search-input">Search employees</label>
-        <input
-          id="employee-search-input"
-          type="search"
-          name="search"
-          placeholder="Search by employee name or employee ID"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-        />
+        <div className="input-with-icon">
+          <SearchIcon width={16} height={16} />
+          <input
+            id="employee-search-input"
+            type="search"
+            name="search"
+            placeholder="Search by employee name or employee ID"
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+          />
+        </div>
       </div>
-      <button type="submit">Search</button>
-      <button type="button" onClick={onClear} disabled={value === ''}>
+      <button type="submit" className="btn btn-primary">
+        Search
+      </button>
+      <button type="button" className="btn" onClick={onClear} disabled={value === ''}>
         Clear search
       </button>
     </form>

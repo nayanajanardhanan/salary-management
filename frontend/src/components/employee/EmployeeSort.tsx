@@ -62,7 +62,7 @@ export function EmployeeSort({ sortBy, sortOrder, onSortByChange, onSortOrderCha
       </div>
 
       {!isDefaultSort ? (
-        <button type="button" onClick={onReset}>
+        <button type="button" className="btn btn-sm" onClick={onReset}>
           Reset sorting
         </button>
       ) : null}

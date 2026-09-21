@@ -1,3 +1,5 @@
+import { InboxIcon } from './icons'
+
 interface EmptyStateProps {
   message: string
 }
@@ -6,6 +8,9 @@ interface EmptyStateProps {
 export function EmptyState({ message }: EmptyStateProps) {
   return (
     <div className="empty-state" role="status">
+      <span className="empty-state__icon" aria-hidden="true">
+        <InboxIcon />
+      </span>
       <p>{message}</p>
     </div>
   )

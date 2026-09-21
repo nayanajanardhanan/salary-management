@@ -75,7 +75,7 @@ export function EmployeeFilters({
       </div>
 
       {hasActiveFilter ? (
-        <button type="button" onClick={onClearAll}>
+        <button type="button" className="btn btn-sm" onClick={onClearAll}>
           Clear filters
         </button>
       ) : null}

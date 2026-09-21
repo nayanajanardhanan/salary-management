@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { ErrorMessage } from '../components/common/ErrorMessage'
+import { ArrowLeftIcon, CheckCircleIcon } from '../components/common/icons'
 import { useCreateEmployee } from '../hooks/useCreateEmployee'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import {
@@ -142,16 +143,21 @@ export function EmployeeCreatePage() {
     return (
       <section aria-labelledby="employee-create-heading">
         <h1 id="employee-create-heading">Add Employee</h1>
-        <div className="employee-create__success" role="status">
-          <p>
-            Employee <strong>{formatEmployeeName(createdEmployee)}</strong> (
-            {createdEmployee.employee_code}) was created successfully.
-          </p>
-          <p className="employee-create__success-actions">
-            <Link to={`/employees/${createdEmployee.id}`}>View employee details</Link>
-            {' · '}
-            <Link to="/employees">Back to employee listing</Link>
-          </p>
+        <div className="success-panel" role="status">
+          <span className="success-panel__icon" aria-hidden="true">
+            <CheckCircleIcon width={20} height={20} />
+          </span>
+          <div className="success-panel__body">
+            <p>
+              Employee <strong>{formatEmployeeName(createdEmployee)}</strong> (
+              {createdEmployee.employee_code}) was created successfully.
+            </p>
+            <p className="employee-create__success-actions">
+              <Link to={`/employees/${createdEmployee.id}`}>View employee details</Link>
+              {' · '}
+              <Link to="/employees">Back to employee listing</Link>
+            </p>
+          </div>
         </div>
       </section>
     )
@@ -159,20 +165,27 @@ export function EmployeeCreatePage() {
 
   return (
     <section aria-labelledby="employee-create-heading">
-      <h1 id="employee-create-heading">Add Employee</h1>
-      <p className="employee-create__back-link">
-        <Link to="/employees">&larr; Back to employee listing</Link>
-      </p>
+      <Link to="/employees" className="back-link">
+        <ArrowLeftIcon width={16} height={16} />
+        Back to employee listing
+      </Link>
 
-      <form className="employee-create-form" onSubmit={handleSubmit} noValidate>
+      <div className="page-header">
+        <div className="page-header__text">
+          <h1 id="employee-create-heading">Add Employee</h1>
+          <p className="page-header__description">Create a new employee record.</p>
+        </div>
+      </div>
+
+      <form className="employee-create-form form-card" onSubmit={handleSubmit} noValidate>
         <p className="employee-create-form__required-note">
-          Fields marked <span aria-hidden="true">*</span> are required.
+          Fields marked <span className="required-mark" aria-hidden="true">*</span> are required.
         </p>
 
         {TEXT_FIELDS.map((field) => (
           <div className="field" key={field}>
             <label htmlFor={`employee-${field}-input`}>
-              {FIELD_LABELS[field]} <span aria-hidden="true">*</span>
+              {FIELD_LABELS[field]} <span className="required-mark" aria-hidden="true">*</span>
             </label>
             <input
               id={`employee-${field}-input`}
@@ -215,8 +228,15 @@ export function EmployeeCreatePage() {
 
         {formError ? <ErrorMessage message={formError} /> : null}
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Creating employee…' : 'Create employee'}
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <span className="btn-spinner" aria-hidden="true" />
+              Creating employee…
+            </>
+          ) : (
+            'Create employee'
+          )}
         </button>
       </form>
     </section>

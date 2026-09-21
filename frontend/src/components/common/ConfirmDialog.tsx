@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import { ErrorMessage } from './ErrorMessage'
+import { AlertCircleIcon } from './icons'
 
 interface ConfirmDialogProps {
   /** Whether the dialog is currently shown. The component always renders (returning `null` when closed) so its focus-management effect can run on every open/close transition. */
@@ -108,6 +109,9 @@ export function ConfirmDialog({
         aria-describedby={descriptionId}
         onKeyDown={handleKeyDown}
       >
+        <span className="confirm-dialog__icon" aria-hidden="true">
+          <AlertCircleIcon width={20} height={20} />
+        </span>
         <h2 id={titleId}>{title}</h2>
         <p id={descriptionId}>{description}</p>
 
@@ -124,7 +128,14 @@ export function ConfirmDialog({
             onClick={onConfirm}
             disabled={isConfirming}
           >
-            {isConfirming ? confirmingLabel : confirmLabel}
+            {isConfirming ? (
+              <>
+                <span className="btn-spinner" aria-hidden="true" />
+                {confirmingLabel}
+              </>
+            ) : (
+              confirmLabel
+            )}
           </button>
         </div>
       </div>

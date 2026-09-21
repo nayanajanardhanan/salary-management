@@ -4,7 +4,7 @@ import { SalaryStatCard } from '../components/analytics/SalaryStatCard'
 import { SalaryStatsTable } from '../components/analytics/SalaryStatsTable'
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
-import { LoadingIndicator } from '../components/common/LoadingIndicator'
+import { LoadingRegion, SkeletonCards, SkeletonToolbar } from '../components/common/LoadingIndicator'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEmployeeFilterOptions } from '../hooks/useEmployeeFilterOptions'
 import { useSalaryAnalytics } from '../hooks/useSalaryAnalytics'
@@ -44,7 +44,16 @@ export function AnalyticsPage() {
 
   return (
     <section aria-labelledby="analytics-heading">
-      <h1 id="analytics-heading">Salary Analytics</h1>
+      <div className="page-header">
+        <div className="page-header__text">
+          <span className="page-header__eyebrow">Analytics</span>
+          <h1 id="analytics-heading">Salary Analytics</h1>
+          <p className="page-header__description">
+            Overall and grouped salary statistics — count, average, minimum, and maximum — computed per
+            currency, never combined across currencies.
+          </p>
+        </div>
+      </div>
 
       <AnalyticsFilters
         departments={departments}
@@ -62,13 +71,18 @@ export function AnalyticsPage() {
       />
 
       {isLoading ? (
-        <LoadingIndicator label="Loading salary analytics…" />
+        <LoadingRegion label="Loading salary analytics…">
+          <SkeletonToolbar />
+          <SkeletonCards count={3} />
+        </LoadingRegion>
       ) : error ? (
         <ErrorMessage message={error} onRetry={retry} />
       ) : hasResults && data ? (
         <>
-          <section aria-labelledby="analytics-overall-heading">
-            <h2 id="analytics-overall-heading">Overall</h2>
+          <section aria-labelledby="analytics-overall-heading" className="section-block">
+            <h2 id="analytics-overall-heading" className="section-heading">
+              Overall
+            </h2>
             <div className="salary-stat-cards">
               {data.overall.map((stats) => (
                 <SalaryStatCard key={stats.currency} stats={stats} />
@@ -76,8 +90,10 @@ export function AnalyticsPage() {
             </div>
           </section>
 
-          <section aria-labelledby="analytics-department-heading">
-            <h2 id="analytics-department-heading">By department</h2>
+          <section aria-labelledby="analytics-department-heading" className="section-block">
+            <h2 id="analytics-department-heading" className="section-heading">
+              By department
+            </h2>
             <SalaryStatsTable
               rows={data.by_department}
               groupLabel="Department"
@@ -86,8 +102,10 @@ export function AnalyticsPage() {
             />
           </section>
 
-          <section aria-labelledby="analytics-country-heading">
-            <h2 id="analytics-country-heading">By country</h2>
+          <section aria-labelledby="analytics-country-heading" className="section-block">
+            <h2 id="analytics-country-heading" className="section-heading">
+              By country
+            </h2>
             <SalaryStatsTable
               rows={data.by_country}
               groupLabel="Country"

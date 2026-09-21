@@ -1,3 +1,5 @@
+import { AlertCircleIcon } from './icons'
+
 interface ErrorMessageProps {
   message: string
   onRetry?: () => void
@@ -11,12 +13,17 @@ interface ErrorMessageProps {
 export function ErrorMessage({ message, onRetry }: ErrorMessageProps) {
   return (
     <div className="error-message" role="alert">
-      <p>{message}</p>
-      {onRetry ? (
-        <button type="button" onClick={onRetry}>
-          Try again
-        </button>
-      ) : null}
+      <span className="error-message__icon" aria-hidden="true">
+        <AlertCircleIcon width={20} height={20} />
+      </span>
+      <div className="error-message__body">
+        <p>{message}</p>
+        {onRetry ? (
+          <button type="button" className="btn btn-sm" onClick={onRetry}>
+            Try again
+          </button>
+        ) : null}
+      </div>
     </div>
   )
 }

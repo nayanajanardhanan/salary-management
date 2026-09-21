@@ -4,6 +4,7 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog'
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingIndicator } from '../components/common/LoadingIndicator'
+import { ArrowLeftIcon, CheckCircleIcon, PencilIcon, TrashIcon } from '../components/common/icons'
 import { useDeleteSalary } from '../hooks/useDeleteSalary'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEmployeeDetails } from '../hooks/useEmployeeDetails'
@@ -13,6 +14,12 @@ const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
   active: 'Active',
   inactive: 'Inactive',
   terminated: 'Terminated',
+}
+
+const EMPLOYMENT_STATUS_BADGE: Record<string, string> = {
+  active: 'badge-success',
+  inactive: 'badge-neutral',
+  terminated: 'badge-error',
 }
 
 /**
@@ -66,13 +73,21 @@ export function EmployeeDetailsPage() {
     }
   }
 
+  const statusValue = data?.employee.employment_status
+  const statusBadgeClass = statusValue ? EMPLOYMENT_STATUS_BADGE[statusValue] ?? 'badge-neutral' : 'badge-neutral'
+
   return (
     <section aria-labelledby="employee-details-heading">
-      <p className="employee-details__back-link">
-        <Link to="/employees">&larr; Back to employee listing</Link>
-      </p>
+      <Link to="/employees" className="back-link">
+        <ArrowLeftIcon width={16} height={16} />
+        Back to employee listing
+      </Link>
 
-      <h1 id="employee-details-heading">{data ? formatEmployeeName(data.employee) : 'Employee details'}</h1>
+      <div className="page-header">
+        <div className="page-header__text">
+          <h1 id="employee-details-heading">{data ? formatEmployeeName(data.employee) : 'Employee details'}</h1>
+        </div>
+      </div>
 
       {isLoading ? (
         <LoadingIndicator label="Loading employee details…" />
@@ -83,19 +98,24 @@ export function EmployeeDetailsPage() {
           <EmptyState message="This employee has no salary record on file, so their details can't be shown." />
           {justDeletedSalary ? (
             <p className="employee-details__delete-success" role="status" tabIndex={-1} ref={deleteSuccessRef}>
+              <CheckCircleIcon width={16} height={16} aria-hidden="true" />
               Salary deleted successfully.
             </p>
           ) : null}
           <p className="employee-details__actions">
-            <Link to={`/employees/${employeeId}/salary/new`}>Add salary</Link>
+            <Link to={`/employees/${employeeId}/salary/new`} className="btn btn-primary">
+              Add salary
+            </Link>
           </p>
         </>
       ) : error ? (
         <ErrorMessage message={error} onRetry={retry} />
       ) : data ? (
-        <>
-          <section aria-labelledby="employee-details-info-heading">
-            <h2 id="employee-details-info-heading">Employee</h2>
+        <div className="details-grid">
+          <section aria-labelledby="employee-details-info-heading" className="card card-padded">
+            <h2 id="employee-details-info-heading" className="section-heading">
+              Employee
+            </h2>
             <dl className="employee-details__list">
               <div>
                 <dt>Employee code</dt>
@@ -124,32 +144,33 @@ export function EmployeeDetailsPage() {
               <div>
                 <dt>Employment status</dt>
                 <dd>
-                  {EMPLOYMENT_STATUS_LABELS[data.employee.employment_status] ?? data.employee.employment_status}
+                  <span className={`badge ${statusBadgeClass}`}>
+                    <span className="badge-dot" aria-hidden="true" />
+                    {EMPLOYMENT_STATUS_LABELS[data.employee.employment_status] ?? data.employee.employment_status}
+                  </span>
                 </dd>
               </div>
             </dl>
           </section>
 
-          <section aria-labelledby="employee-details-salary-heading">
-            <h2 id="employee-details-salary-heading">Current salary</h2>
-            <dl className="employee-details__list">
-              <div>
-                <dt>Salary amount</dt>
-                <dd>{formatPlainAmount(data.salary.amount)}</dd>
-              </div>
-              <div>
-                <dt>Currency</dt>
-                <dd>{data.salary.currency}</dd>
-              </div>
-            </dl>
+          <section aria-labelledby="employee-details-salary-heading" className="card card-padded">
+            <h2 id="employee-details-salary-heading" className="section-heading">
+              Current salary
+            </h2>
+            <p className="employee-details__salary-amount">{formatPlainAmount(data.salary.amount)}</p>
+            <p className="employee-details__salary-currency">{data.salary.currency}</p>
             <p className="employee-details__actions">
-              <Link to={`/employees/${employeeId}/salary/edit`}>Edit salary</Link>
-              <button type="button" className="employee-details__delete-salary-button" onClick={handleOpenDeleteDialog}>
+              <Link to={`/employees/${employeeId}/salary/edit`} className="btn">
+                <PencilIcon width={15} height={15} />
+                Edit salary
+              </Link>
+              <button type="button" className="btn btn-danger" onClick={handleOpenDeleteDialog}>
+                <TrashIcon width={15} height={15} />
                 Delete salary
               </button>
             </p>
           </section>
-        </>
+        </div>
       ) : null}
 
       <ConfirmDialog

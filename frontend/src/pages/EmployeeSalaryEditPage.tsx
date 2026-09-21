@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingIndicator } from '../components/common/LoadingIndicator'
+import { ArrowLeftIcon, CheckCircleIcon } from '../components/common/icons'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEmployeeDetails } from '../hooks/useEmployeeDetails'
 import { useUpdateSalary } from '../hooks/useUpdateSalary'
@@ -120,19 +121,19 @@ function SalaryEditForm({ employee, salary, onUpdated }: SalaryEditFormProps) {
 
   return (
     <>
-      <p className="salary-edit__identity">
+      <p className="form-identity">
         Editing the salary for <strong>{formatEmployeeName(employee)}</strong> ({employee.employee_code}). Current
         salary: <strong>{formatSalaryAmount(salary.amount, salary.currency)}</strong>.
       </p>
 
-      <form className="salary-edit-form" onSubmit={handleSubmit} noValidate>
+      <form className="salary-edit-form form-card" onSubmit={handleSubmit} noValidate>
         <p className="salary-edit-form__required-note">
-          Fields marked <span aria-hidden="true">*</span> are required.
+          Fields marked <span className="required-mark" aria-hidden="true">*</span> are required.
         </p>
 
         <div className="field">
           <label htmlFor="salary-edit-amount-input">
-            {FIELD_LABELS.amount} <span aria-hidden="true">*</span>
+            {FIELD_LABELS.amount} <span className="required-mark" aria-hidden="true">*</span>
           </label>
           <input
             id="salary-edit-amount-input"
@@ -158,7 +159,7 @@ function SalaryEditForm({ employee, salary, onUpdated }: SalaryEditFormProps) {
 
         <div className="field">
           <label htmlFor="salary-edit-currency-input">
-            {FIELD_LABELS.currency} <span aria-hidden="true">*</span>
+            {FIELD_LABELS.currency} <span className="required-mark" aria-hidden="true">*</span>
           </label>
           <select
             id="salary-edit-currency-input"
@@ -189,8 +190,15 @@ function SalaryEditForm({ employee, salary, onUpdated }: SalaryEditFormProps) {
 
         {formError ? <ErrorMessage message={formError} /> : null}
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving changes…' : 'Save changes'}
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <span className="btn-spinner" aria-hidden="true" />
+              Saving changes…
+            </>
+          ) : (
+            'Save changes'
+          )}
         </button>
       </form>
     </>
@@ -225,17 +233,22 @@ export function EmployeeSalaryEditPage() {
     return (
       <section aria-labelledby="salary-edit-heading">
         <h1 id="salary-edit-heading">Edit Salary</h1>
-        <div className="salary-edit__success" role="status">
-          <p>
-            The salary for <strong>{formatEmployeeName(data.employee)}</strong> (
-            {data.employee.employee_code}) was updated to{' '}
-            <strong>{formatSalaryAmount(updatedSalary.amount, updatedSalary.currency)}</strong>.
-          </p>
-          <p className="salary-edit__success-actions">
-            <Link to={`/employees/${data.employee.id}`}>View employee details</Link>
-            {' · '}
-            <Link to="/employees">Back to employee listing</Link>
-          </p>
+        <div className="success-panel" role="status">
+          <span className="success-panel__icon" aria-hidden="true">
+            <CheckCircleIcon width={20} height={20} />
+          </span>
+          <div className="success-panel__body">
+            <p>
+              The salary for <strong>{formatEmployeeName(data.employee)}</strong> (
+              {data.employee.employee_code}) was updated to{' '}
+              <strong>{formatSalaryAmount(updatedSalary.amount, updatedSalary.currency)}</strong>.
+            </p>
+            <p className="salary-edit__success-actions">
+              <Link to={`/employees/${data.employee.id}`}>View employee details</Link>
+              {' · '}
+              <Link to="/employees">Back to employee listing</Link>
+            </p>
+          </div>
         </div>
       </section>
     )
@@ -243,14 +256,23 @@ export function EmployeeSalaryEditPage() {
 
   return (
     <section aria-labelledby="salary-edit-heading">
-      <h1 id="salary-edit-heading">Edit Salary</h1>
-      <p className="salary-edit__back-link">
-        {notFound ? (
-          <Link to="/employees">&larr; Back to employee listing</Link>
-        ) : (
-          <Link to={`/employees/${employeeId}`}>&larr; Back to employee details</Link>
-        )}
-      </p>
+      {notFound ? (
+        <Link to="/employees" className="back-link">
+          <ArrowLeftIcon width={16} height={16} />
+          Back to employee listing
+        </Link>
+      ) : (
+        <Link to={`/employees/${employeeId}`} className="back-link">
+          <ArrowLeftIcon width={16} height={16} />
+          Back to employee details
+        </Link>
+      )}
+
+      <div className="page-header">
+        <div className="page-header__text">
+          <h1 id="salary-edit-heading">Edit Salary</h1>
+        </div>
+      </div>
 
       {isLoading ? (
         <LoadingIndicator label="Loading salary…" />
@@ -260,7 +282,9 @@ export function EmployeeSalaryEditPage() {
         <>
           <EmptyState message="This employee has no salary record to edit yet." />
           <p className="salary-edit__actions">
-            <Link to={`/employees/${employeeId}/salary/new`}>Add salary</Link>
+            <Link to={`/employees/${employeeId}/salary/new`} className="btn btn-primary">
+              Add salary
+            </Link>
           </p>
         </>
       ) : error ? (
