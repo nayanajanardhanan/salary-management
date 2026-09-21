@@ -1,5 +1,13 @@
 import { apiRequest } from './client'
-import type { EmployeeCreate, EmployeeListResponse, EmployeeRead, EmployeeSalaryDetails, SortOrder } from '../types/employee'
+import type {
+  EmployeeCreate,
+  EmployeeListResponse,
+  EmployeeRead,
+  EmployeeSalaryDetails,
+  Salary,
+  SalaryCreate,
+  SortOrder,
+} from '../types/employee'
 
 const EMPLOYEES_ENDPOINT = '/api/v1/employees'
 
@@ -105,6 +113,17 @@ export function fetchEmployees(params: FetchEmployeesParams = {}): Promise<Emplo
 }
 
 /**
+ * Fetches a single employee's core fields (`GET /employees/{id}`), with no
+ * requirement that they already have a salary record — unlike
+ * `fetchEmployeeDetails`, which 404s entirely when there's no salary. Used
+ * to show the employee's identity on the salary creation form, which is
+ * reached precisely when the employee has no salary yet.
+ */
+export function fetchEmployee(employeeId: number): Promise<EmployeeRead> {
+  return apiRequest<EmployeeRead>(`${EMPLOYEES_ENDPOINT}/${employeeId}`)
+}
+
+/**
  * Fetches one employee's core details together with their current salary,
  * via the backend's combined `/details` endpoint
  * (`app.api.v1.routes.employees.get_employee_details`) rather than two
@@ -136,6 +155,25 @@ export function fetchEmployeeDetails(employeeId: number): Promise<EmployeeSalary
  */
 export function createEmployee(data: EmployeeCreate): Promise<EmployeeRead> {
   return apiRequest<EmployeeRead>(EMPLOYEES_ENDPOINT, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+/**
+ * Creates the salary record for a single, existing employee via
+ * `POST /employees/{id}/salary` (`app.api.v1.routes.employees.create_employee_salary`).
+ * `employee_id` is taken from the path, not the request body, matching the
+ * backend's `SalaryCreate` schema exactly. A `404` (no such employee,
+ * `error.code === 'EMPLOYEE_NOT_FOUND'`), a `409` (the employee already has
+ * a salary record — each employee has at most one,
+ * `error.code === 'SALARY_ALREADY_EXISTS'`), or a `422` (schema validation,
+ * `error.code === 'VALIDATION_ERROR'`, with per-field details) all surface
+ * as the same normalized `ApiError` every other endpoint throws
+ * (`hooks/useCreateSalary.ts` interprets it).
+ */
+export function createEmployeeSalary(employeeId: number, data: SalaryCreate): Promise<Salary> {
+  return apiRequest<Salary>(`${EMPLOYEES_ENDPOINT}/${employeeId}/salary`, {
     method: 'POST',
     body: JSON.stringify(data),
   })

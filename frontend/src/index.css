@@ -409,6 +409,10 @@ main {
   margin-bottom: 16px;
 }
 
+.employee-details__actions {
+  margin-top: 16px;
+}
+
 .employee-details__list {
   display: grid;
   grid-template-columns: max-content 1fr;
@@ -585,5 +589,53 @@ main {
 }
 
 .employee-create__success-actions {
+  margin-bottom: 0;
+}
+
+.salary-create__back-link {
+  margin-bottom: 16px;
+}
+
+.salary-create__identity {
+  margin: 0 0 16px;
+}
+
+.salary-create-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+}
+
+.salary-create-form__required-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.salary-create-form button[type='submit'] {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.salary-create-form button[type='submit']:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.salary-create__success {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  max-width: 480px;
+}
+
+.salary-create__success-actions {
   margin-bottom: 0;
 }

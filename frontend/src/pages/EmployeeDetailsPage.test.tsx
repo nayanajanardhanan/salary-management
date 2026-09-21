@@ -112,6 +112,30 @@ describe('EmployeeDetailsPage', () => {
     expect(screen.queryByText(/could not be found/i)).not.toBeInTheDocument()
   })
 
+  it('offers an "Add salary" link only when the employee has no salary record', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployeeDetails').mockRejectedValue(
+      new ApiError(404, 'SALARY_NOT_FOUND', 'No salary record found for employee 1'),
+    )
+
+    renderPage('1')
+
+    expect(await screen.findByRole('link', { name: /add salary/i })).toHaveAttribute(
+      'href',
+      '/employees/1/salary/new',
+    )
+  })
+
+  it('does not offer an "Add salary" link when the employee already has a salary', async () => {
+    vi.spyOn(employeesApi, 'fetchEmployeeDetails').mockResolvedValue(detailsResponse)
+
+    renderPage()
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Ada Lovelace' })).toBeInTheDocument(),
+    )
+    expect(screen.queryByRole('link', { name: /add salary/i })).not.toBeInTheDocument()
+  })
+
   it('shows a safe, accessible error state for other API failures, without exposing internals', async () => {
     vi.spyOn(employeesApi, 'fetchEmployeeDetails').mockRejectedValue(
       new ApiError(500, 'INTERNAL_ERROR', 'Something went wrong. Please try again.'),

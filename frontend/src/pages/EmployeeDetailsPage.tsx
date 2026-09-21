@@ -43,7 +43,12 @@ export function EmployeeDetailsPage() {
       ) : notFound ? (
         <EmptyState message={`Employee ${employeeId} could not be found.`} />
       ) : salaryUnavailable ? (
-        <EmptyState message="This employee has no salary record on file, so their details can't be shown." />
+        <>
+          <EmptyState message="This employee has no salary record on file, so their details can't be shown." />
+          <p className="employee-details__actions">
+            <Link to={`/employees/${employeeId}/salary/new`}>Add salary</Link>
+          </p>
+        </>
       ) : error ? (
         <ErrorMessage message={error} onRetry={retry} />
       ) : data ? (

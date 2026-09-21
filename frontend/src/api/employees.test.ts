@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { logout, setToken } from '../auth/authStore'
-import { createEmployee, fetchEmployeeDetails, fetchEmployees } from './employees'
-import type { EmployeeCreate } from '../types/employee'
+import { createEmployee, createEmployeeSalary, fetchEmployee, fetchEmployeeDetails, fetchEmployees } from './employees'
+import type { EmployeeCreate, EmployeeRead, SalaryCreate } from '../types/employee'
 
 const emptyResponse = {
   items: [],
@@ -375,6 +375,122 @@ describe('createEmployee', () => {
       .mockResolvedValue(new Response(JSON.stringify(createdEmployeeResponse), { status: 201 }))
 
     await createEmployee(newEmployee)
+
+    const [, requestInit] = fetchMock.mock.calls[0]
+    const headers = new Headers(requestInit?.headers)
+    expect(headers.get('Authorization')).toBe('Bearer test-token')
+  })
+})
+
+describe('fetchEmployee', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    logout()
+  })
+
+  const employeeResponse: EmployeeRead = {
+    id: 1,
+    employee_code: 'EMP-001',
+    first_name: 'Ada',
+    last_name: 'Lovelace',
+    department: 'Engineering',
+    country: 'United Kingdom',
+    job_title: 'Software Engineer',
+    employment_status: 'active',
+  }
+
+  it('requests the single employee endpoint for the given id', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(employeeResponse), { status: 200 }))
+
+    const result = await fetchEmployee(1)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/1$/)
+    expect(result).toEqual(employeeResponse)
+  })
+
+  it('uses a different employee id when given a different id', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ ...employeeResponse, id: 42 }), { status: 200 }))
+
+    await fetchEmployee(42)
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/42$/)
+  })
+
+  it('uses the shared authenticated client, attaching the stored access token', async () => {
+    setToken('test-token')
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(employeeResponse), { status: 200 }))
+
+    await fetchEmployee(1)
+
+    const [, requestInit] = fetchMock.mock.calls[0]
+    const headers = new Headers(requestInit?.headers)
+    expect(headers.get('Authorization')).toBe('Bearer test-token')
+  })
+})
+
+describe('createEmployeeSalary', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    logout()
+  })
+
+  const newSalary: SalaryCreate = { amount: '95000.00', currency: 'GBP' }
+  const createdSalaryResponse = { employee_id: 1, ...newSalary }
+
+  it('posts to the employee salary endpoint for the given employee id, with the given payload', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(createdSalaryResponse), { status: 201 }))
+
+    const result = await createEmployeeSalary(1, newSalary)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/1\/salary$/)
+    expect(requestInit?.method).toBe('POST')
+    expect(JSON.parse(String(requestInit?.body))).toEqual(newSalary)
+    expect(result).toEqual(createdSalaryResponse)
+  })
+
+  it('uses a different employee id when given a different id', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ ...createdSalaryResponse, employee_id: 42 }), { status: 201 }))
+
+    await createEmployeeSalary(42, newSalary)
+
+    const [requestUrl] = fetchMock.mock.calls[0]
+    expect(String(requestUrl)).toMatch(/\/api\/v1\/employees\/42\/salary$/)
+  })
+
+  it('sends a JSON content type header', async () => {
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(createdSalaryResponse), { status: 201 }))
+
+    await createEmployeeSalary(1, newSalary)
+
+    const [, requestInit] = fetchMock.mock.calls[0]
+    const headers = new Headers(requestInit?.headers)
+    expect(headers.get('Content-Type')).toBe('application/json')
+  })
+
+  it('uses the shared authenticated client, attaching the stored access token', async () => {
+    setToken('test-token')
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(createdSalaryResponse), { status: 201 }))
+
+    await createEmployeeSalary(1, newSalary)
 
     const [, requestInit] = fetchMock.mock.calls[0]
     const headers = new Headers(requestInit?.headers)

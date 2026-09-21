@@ -24,6 +24,47 @@ export interface Salary {
   currency: string
 }
 
+/**
+ * Mirrors `app.schemas.salary.SalaryCreate` — the request body for
+ * `POST /employees/{id}/salary`. `employee_id` is not part of the body (it
+ * comes from the route path), matching the backend schema exactly.
+ * `amount` is typed as `string`, not `number`, for the same reason
+ * `Salary.amount` is: it's sent/received as decimal text to avoid float
+ * precision loss.
+ */
+export interface SalaryCreate {
+  amount: string
+  currency: string
+}
+
+/**
+ * Mirrors `app.core.currencies.SUPPORTED_CURRENCY_CODES` — the fixed set of
+ * ISO 4217 currency codes the backend validates `SalaryCreate.currency`
+ * against. There's no endpoint exposing this list at runtime (unlike the
+ * "currencies in use" list `hooks/useEmployeeFilterOptions.ts` sources from
+ * the analytics endpoint), so it's mirrored here by hand — same convention
+ * as `EMPLOYEE_SORT_FIELDS` above — for the salary creation form's currency
+ * select. Keep in sync with the backend allowlist by hand.
+ */
+export const SUPPORTED_CURRENCY_CODES: readonly string[] = [
+  'AED', 'AFN', 'ALL', 'AMD', 'AOA', 'ARS', 'AUD', 'AWG', 'AZN', 'BAM',
+  'BBD', 'BDT', 'BHD', 'BIF', 'BMD', 'BND', 'BOB', 'BRL', 'BSD', 'BTN',
+  'BWP', 'BYN', 'BZD', 'CAD', 'CDF', 'CHF', 'CLP', 'CNY', 'COP', 'CRC',
+  'CUP', 'CVE', 'CZK', 'DJF', 'DKK', 'DOP', 'DZD', 'EGP', 'ERN', 'ETB',
+  'EUR', 'FJD', 'FKP', 'GBP', 'GEL', 'GHS', 'GIP', 'GMD', 'GNF', 'GTQ',
+  'GYD', 'HKD', 'HNL', 'HTG', 'HUF', 'IDR', 'ILS', 'INR', 'IQD', 'IRR',
+  'ISK', 'JMD', 'JOD', 'JPY', 'KES', 'KGS', 'KHR', 'KMF', 'KPW', 'KRW',
+  'KWD', 'KYD', 'KZT', 'LAK', 'LBP', 'LKR', 'LRD', 'LSL', 'LYD', 'MAD',
+  'MDL', 'MGA', 'MKD', 'MMK', 'MNT', 'MOP', 'MRU', 'MUR', 'MVR', 'MWK',
+  'MXN', 'MYR', 'MZN', 'NAD', 'NGN', 'NIO', 'NOK', 'NPR', 'NZD', 'OMR',
+  'PAB', 'PEN', 'PGK', 'PHP', 'PKR', 'PLN', 'PYG', 'QAR', 'RON', 'RSD',
+  'RUB', 'RWF', 'SAR', 'SBD', 'SCR', 'SDG', 'SEK', 'SGD', 'SHP', 'SLE',
+  'SOS', 'SRD', 'SSP', 'STN', 'SVC', 'SYP', 'SZL', 'THB', 'TJS', 'TMT',
+  'TND', 'TOP', 'TRY', 'TTD', 'TWD', 'TZS', 'UAH', 'UGX', 'USD', 'UYU',
+  'UZS', 'VED', 'VES', 'VND', 'VUV', 'WST', 'XAF', 'XCD', 'XCG', 'XOF',
+  'XPF', 'YER', 'ZAR', 'ZMW', 'ZWG',
+]
+
 /** Mirrors `app.schemas.employee.EmployeeListItem`. `salary` is `null` for an employee with no salary record. */
 export interface EmployeeListItem {
   id: number
