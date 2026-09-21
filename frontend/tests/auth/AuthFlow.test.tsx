@@ -1,10 +1,12 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../../src/App'
 import * as authApi from '../../src/api/auth'
 import { ApiError } from '../../src/api/client'
 import { logout } from '../../src/auth/authStore'
+
+const emptyEmployeeListResponse = { items: [], page: 1, page_size: 20, total: 0, has_next: false }
 
 const tokenResponse = { access_token: 'issued-access-token', token_type: 'bearer', expires_in: 3600 }
 
@@ -95,5 +97,47 @@ describe('Authentication flow', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Sign in to PayScope' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
+  })
+
+  it('sends the token returned by the real login endpoint on the next authenticated API request', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(authApi, 'login').mockResolvedValue(tokenResponse)
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify(emptyEmployeeListResponse), { status: 200 }))
+    render(<App />)
+
+    await signIn(user)
+    await screen.findByRole('heading', { level: 1, name: 'PayScope' })
+    await user.click(screen.getByRole('link', { name: 'Employees' }))
+
+    await waitFor(() =>
+      expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('/api/v1/employees'))).toBe(
+        true,
+      ),
+    )
+    const employeesCall = fetchMock.mock.calls.find((call) => String(call[0]).includes('/api/v1/employees'))
+    const headers = new Headers(employeesCall?.[1]?.headers)
+    expect(headers.get('Authorization')).toBe(`Bearer ${tokenResponse.access_token}`)
+  })
+
+  it('requires signing in again after sign-out before a protected route can be reached', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(authApi, 'login').mockResolvedValue(tokenResponse)
+    const firstRender = render(<App />)
+
+    await signIn(user)
+    await screen.findByRole('heading', { level: 1, name: 'PayScope' })
+    await user.click(screen.getByRole('button', { name: 'Sign out' }))
+    await screen.findByRole('heading', { level: 1, name: 'Sign in to PayScope' })
+    firstRender.unmount()
+
+    // A fresh mount at a protected path (simulating the user navigating
+    // straight to it, e.g. via a bookmark or the address bar) after sign-out.
+    window.history.pushState({}, '', '/employees')
+    render(<App />)
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in to PayScope' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /^employees$/i })).not.toBeInTheDocument()
   })
 })

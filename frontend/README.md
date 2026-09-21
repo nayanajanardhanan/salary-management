@@ -18,6 +18,42 @@ npm install
 cp .env.example .env   # adjust VITE_API_BASE_URL if the backend isn't on localhost:8000
 ```
 
+## Authentication
+
+The app requires signing in as an HR user before any employee, salary, or
+analytics page is reachable — there is no manual access-token entry.
+
+1. Make sure the backend has a development HR user (see
+   [`backend/README.md`](../backend/README.md#seeding-an-hr-user) —
+   `alembic upgrade head` then `python -m app.scripts.seed`, with
+   `PAYSCOPE_HR_SEED_USERNAME` / `PAYSCOPE_HR_SEED_EMAIL` /
+   `PAYSCOPE_HR_SEED_PASSWORD` set in `backend/.env`).
+2. Open the app (`npm run dev`, default http://localhost:5173) — an
+   unauthenticated visit to any page redirects to `/login`.
+3. Sign in with that HR user's username (or email) and password. On
+   success, the app stores the access token the backend returned (see
+   [Security notes](#security-notes) below) and takes you to the page you
+   originally requested, or the home page.
+4. **Log out** via the "Sign out" button in the header (visible on every
+   authenticated page). This clears the stored token immediately and
+   returns you to `/login`; every protected page requires signing in again
+   after that.
+
+If a request is ever rejected as unauthorized (e.g. the token expired), the
+app automatically returns to `/login` with a "session expired" message —
+you don't need to manually sign out first.
+
+### Security notes
+
+The access token is stored in `sessionStorage` (`src/auth/authStore.ts`):
+it is cleared automatically when the browser tab closes, and is never
+persisted to `localStorage`, a cookie, or logged to the console. This is
+simple and requires no backend session infrastructure, but — like any
+browser-storage-based token — it is readable by any script that can run on
+this origin (e.g. an XSS bug elsewhere in the app), and there is no
+server-side revocation: an issued token stays valid until it expires
+(`PAYSCOPE_JWT_EXPIRE_MINUTES`) even after sign-out or a tab close.
+
 ## Scripts
 
 | Command | Purpose |

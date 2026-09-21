@@ -18,6 +18,9 @@ python -m venv .venv
 pip install -e ".[dev]"
 copy .env.example .env        # Windows
 # cp .env.example .env          # macOS/Linux
+
+alembic upgrade head          # create the database schema (see Database migrations below)
+python -m app.scripts.seed    # optional: sample employees/salaries + a dev HR login (see Authentication below)
 ```
 
 ## Run the app
@@ -55,6 +58,17 @@ logging in — there is no manual/static token to configure or paste anymore.
    and expire after `PAYSCOPE_JWT_EXPIRE_MINUTES` (default 60); a missing,
    malformed, invalid, or expired token is rejected identically with a
    `401`.
+
+There is no logout endpoint: tokens are stateless JWTs with no server-side
+session to revoke, so "logging out" just means the client stops sending the
+token (the frontend clears it from storage — see
+[`frontend/README.md`](../frontend/README.md#authentication)). A token
+already issued stays valid until it expires, even after the client
+discards it.
+
+For the frontend login/logout walkthrough (the actual UI most people will
+use, rather than `curl`), see
+[`frontend/README.md`](../frontend/README.md#authentication).
 
 | Variable | Purpose | Default |
 |---|---|---|
@@ -163,4 +177,8 @@ alembic upgrade head
 alembic downgrade -1
 ```
 
-No migrations exist yet — this step only sets up the infrastructure.
+Existing migrations (`alembic/versions/`), in order: `c97da150dfe4` (employee
+and salary tables), `5de088d1fe56` (`hr_users` table, for HR login — see
+[Authentication](#authentication)). Run `alembic upgrade head` after a fresh
+`pip install -e ".[dev]"` / `.env` setup to create the database schema
+before starting the app or running the seed script.
