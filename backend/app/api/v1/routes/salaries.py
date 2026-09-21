@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.dependencies import (
     pagination_params,
-    require_api_token,
+    require_auth,
     salary_filters_params,
     salary_sort_params,
 )
@@ -17,7 +17,7 @@ from app.utils.pagination import PaginationParams
 router = APIRouter(
     prefix="/api/v1/salaries",
     tags=["salaries"],
-    dependencies=[Depends(require_api_token)],
+    dependencies=[Depends(require_auth)],
 )
 
 

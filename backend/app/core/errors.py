@@ -54,7 +54,7 @@ class AppError(Exception):
 class UnauthorizedError(AppError):
     """Raised when a request lacks valid authentication credentials.
 
-    Raised by the shared `require_api_token` dependency
+    Raised by the shared `require_auth` dependency
     (`app.api.v1.dependencies`), applied centrally at the router level, not
     by individual services — see `docs/architecture.md` Section 10 and
     `docs/requirements.md` NFR 4.4 / Acceptance Criterion 8.10.

@@ -5,7 +5,7 @@ from app.api.v1.dependencies import (
     employee_filters_params,
     employee_sort_params,
     pagination_params,
-    require_api_token,
+    require_auth,
 )
 from app.core.errors import NotFoundError
 from app.db.session import get_db
@@ -34,7 +34,7 @@ from app.utils.pagination import PaginationParams
 router = APIRouter(
     prefix="/api/v1/employees",
     tags=["employees"],
-    dependencies=[Depends(require_api_token)],
+    dependencies=[Depends(require_auth)],
 )
 
 

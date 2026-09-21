@@ -8,6 +8,10 @@ import * as authStore from './authStore'
  * checks. Wraps `authStore` (framework-agnostic) with `useSyncExternalStore`
  * so React re-renders when the token changes anywhere — including when the
  * shared API client (`../api/client.ts`) clears it after a 401.
+ *
+ * `login` takes the access token already returned by a successful
+ * `POST /api/v1/auth/login` (see `../hooks/useLogin.ts`, which calls it) —
+ * it doesn't itself talk to the backend or validate credentials.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const token = useSyncExternalStore(authStore.subscribeToToken, authStore.getToken)

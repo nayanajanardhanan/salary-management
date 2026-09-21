@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes.health import router as health_router
 from app.api.v1.routes.analytics import router as analytics_router
+from app.api.v1.routes.auth import router as auth_router
 from app.api.v1.routes.employees import router as employees_router
 from app.api.v1.routes.salaries import router as salaries_router
 from app.core.config import get_settings
@@ -35,6 +36,7 @@ def create_app() -> FastAPI:
     register_exception_handlers(app)
 
     app.include_router(health_router)
+    app.include_router(auth_router)
     app.include_router(employees_router)
     app.include_router(salaries_router)
     app.include_router(analytics_router)

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from app.api.v1.dependencies import require_api_token, salary_filters_params
+from app.api.v1.dependencies import require_auth, salary_filters_params
 from app.db.session import get_db
 from app.schemas.analytics import (
     CountrySalaryStats,
@@ -16,7 +16,7 @@ from app.services.salary_service import SalaryFilters
 router = APIRouter(
     prefix="/api/v1/analytics",
     tags=["analytics"],
-    dependencies=[Depends(require_api_token)],
+    dependencies=[Depends(require_auth)],
 )
 
 

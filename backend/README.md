@@ -28,6 +28,66 @@ uvicorn app.main:app --reload
 
 Then check `GET http://127.0.0.1:8000/health`.
 
+## Authentication
+
+`/api/v1/*` endpoints (employee, salary, and salary-analytics data) require
+an `Authorization: Bearer <access token>` header. The token comes from
+logging in — there is no manual/static token to configure or paste anymore.
+
+1. Apply migrations and seed a development HR user (see
+   [Database migrations](#database-migrations-alembic) and
+   [Seeding an HR user](#seeding-an-hr-user) below).
+2. `POST /api/v1/auth/login` with that user's username (or email) and
+   password:
+
+   ```bash
+   curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
+     -H "Content-Type: application/json" \
+     -d '{"username_or_email": "hr.admin", "password": "<your PAYSCOPE_HR_SEED_PASSWORD>"}'
+   ```
+
+   Returns `{"access_token": "...", "token_type": "bearer", "expires_in": 3600}`
+   on success, or a `401` (`code="INVALID_CREDENTIALS"`) for an unknown
+   username/email, a wrong password, or an inactive user — all three look
+   identical to the caller, by design.
+3. Send that `access_token` as `Authorization: Bearer <access_token>` on
+   subsequent requests. Tokens are JWTs signed with `PAYSCOPE_JWT_SECRET_KEY`
+   and expire after `PAYSCOPE_JWT_EXPIRE_MINUTES` (default 60); a missing,
+   malformed, invalid, or expired token is rejected identically with a
+   `401`.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `PAYSCOPE_JWT_SECRET_KEY` | Signs/verifies access tokens. Unset means login always fails and no token can be validated (fails closed). | unset |
+| `PAYSCOPE_JWT_ALGORITHM` | JWT signing algorithm. | `HS256` |
+| `PAYSCOPE_JWT_EXPIRE_MINUTES` | Access token lifetime, in minutes. | `60` |
+
+Set `PAYSCOPE_JWT_SECRET_KEY` to a long, random value per environment —
+never commit a real secret (see `.env.example`).
+
+### Seeding an HR user
+
+`python -m app.scripts.seed` (see [Seed script](app/scripts/README.md)) also
+creates one development HR user, from these environment variables:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `PAYSCOPE_HR_SEED_USERNAME` | Seeded HR user's username. | `hr.admin` |
+| `PAYSCOPE_HR_SEED_EMAIL` | Seeded HR user's email. | `hr.admin@payscope.local` |
+| `PAYSCOPE_HR_SEED_PASSWORD` | Seeded HR user's password (hashed before storage). | unset — HR-user seeding is skipped if unset |
+
+Running the seed command again never creates a duplicate HR user (it looks
+up the existing user by username/email first). To change the seeded
+password, either delete the `hr_users` row and re-seed, or update
+`PAYSCOPE_HR_SEED_PASSWORD` and update the row directly — the seed script
+itself never overwrites an existing user's password. The password is never
+printed or logged, by the seed script or the login endpoint.
+
+**Security note:** these are development-only, local defaults. Never reuse
+`PAYSCOPE_HR_SEED_PASSWORD` or `PAYSCOPE_JWT_SECRET_KEY` in a real
+deployment, and never commit real values for either — `.env` is gitignored;
+only `.env.example` (with placeholder values) is committed.
+
 ## Run tests
 
 ```bash

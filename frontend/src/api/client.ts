@@ -30,7 +30,7 @@ export class ApiError extends Error {
  * `Authorization` header or interpret a 401 themselves.
  *
  * The stored access token (see `../auth/authStore.ts`) is attached
- * automatically when present, exactly as the backend's `require_api_token`
+ * automatically when present, exactly as the backend's `require_auth`
  * dependency expects (`Authorization: Bearer <token>`). A `401` response
  * means the backend rejected the token — it's cleared centrally here
  * (`expireSession`), which flips the whole app to the unauthenticated state
@@ -59,7 +59,11 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   }
 
   if (!response.ok) {
-    if (response.status === 401) {
+    if (response.status === 401 && token) {
+      // Only a 401 to a request that *carried* a token means the backend
+      // rejected an established session; a 401 with no token (e.g. a
+      // failed login attempt) is just that call's own failure, not an
+      // expired session.
       expireSession()
     }
 

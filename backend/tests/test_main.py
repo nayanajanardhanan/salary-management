@@ -17,7 +17,7 @@ def _app_with_cors_origins(monkeypatch, origins: str):
     app-creation time).
     """
     monkeypatch.setenv("PAYSCOPE_CORS_ORIGINS", origins)
-    monkeypatch.setenv("PAYSCOPE_API_TOKEN", "test-token")
+    monkeypatch.setenv("PAYSCOPE_JWT_SECRET_KEY", "test-jwt-signing-secret-at-least-32-bytes-long")
     get_settings.cache_clear()
     try:
         return create_app()

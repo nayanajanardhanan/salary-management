@@ -8,9 +8,11 @@ from app.data_generation.dataset import EmployeeDataset
 from app.data_generation.employee_generator import GeneratedEmployee
 from app.data_generation.salary_generator import GeneratedSalary
 from app.models.employee import Employee, EmploymentStatus
+from app.models.hr_user import HrUser
 from app.models.salary import Salary
 from app.scripts import seed as seed_module
-from app.scripts.seed import DatabaseAlreadySeededError, seed_database
+from app.scripts.seed import DatabaseAlreadySeededError, seed_database, seed_hr_user
+from app.services import auth_service
 
 
 def _employee_count(session) -> int:
@@ -114,3 +116,71 @@ def test_seed_database_rolls_back_on_failure(db_session, monkeypatch) -> None:
 
     assert _employee_count(db_session) == 0
     assert _salary_count(db_session) == 0
+
+
+# --- seed_hr_user ------------------------------------------------------------
+
+
+def _hr_user_count(session) -> int:
+    return session.scalar(select(func.count()).select_from(HrUser))
+
+
+def test_seed_hr_user_creates_a_new_user(db_session) -> None:
+    result = seed_hr_user(
+        db_session, username="hr.admin", email="hr.admin@payscope.local", password="s3cret-pw"
+    )
+
+    assert result.created is True
+    assert result.username == "hr.admin"
+    assert _hr_user_count(db_session) == 1
+
+
+def test_seed_hr_user_hashes_the_password_rather_than_storing_it_as_plaintext(db_session) -> None:
+    seed_hr_user(
+        db_session, username="hr.admin", email="hr.admin@payscope.local", password="s3cret-pw"
+    )
+
+    user = db_session.scalar(select(HrUser).where(HrUser.username == "hr.admin"))
+    assert user.password_hash != "s3cret-pw"
+    assert auth_service.verify_password("s3cret-pw", user.password_hash)
+
+
+def test_seed_hr_user_is_idempotent_by_username(db_session) -> None:
+    first = seed_hr_user(
+        db_session, username="hr.admin", email="hr.admin@payscope.local", password="s3cret-pw"
+    )
+    second = seed_hr_user(
+        db_session,
+        username="hr.admin",
+        email="hr.admin@payscope.local",
+        password="a-different-password",
+    )
+
+    assert first.created is True
+    assert second.created is False
+    assert _hr_user_count(db_session) == 1
+
+
+def test_seed_hr_user_is_idempotent_by_email_even_with_a_different_username(db_session) -> None:
+    seed_hr_user(
+        db_session, username="hr.admin", email="hr.admin@payscope.local", password="s3cret-pw"
+    )
+
+    result = seed_hr_user(
+        db_session,
+        username="a-different-username",
+        email="hr.admin@payscope.local",
+        password="s3cret-pw",
+    )
+
+    assert result.created is False
+    assert _hr_user_count(db_session) == 1
+
+
+def test_seed_hr_user_running_the_seed_command_repeatedly_creates_no_duplicates(db_session) -> None:
+    for _ in range(5):
+        seed_hr_user(
+            db_session, username="hr.admin", email="hr.admin@payscope.local", password="s3cret-pw"
+        )
+
+    assert _hr_user_count(db_session) == 1

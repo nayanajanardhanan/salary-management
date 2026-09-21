@@ -1,16 +1,19 @@
 /**
- * Holds the PayScope API access token (the backend's actual auth mechanism:
- * a single shared `Authorization: Bearer <token>` credential checked by
- * `require_api_token`, see `backend/app/api/v1/dependencies.py` — there is
- * no login endpoint, session, or user database). Framework-agnostic so both
- * React (`../auth/AuthContext.tsx`) and the plain API client
- * (`../api/client.ts`) can read/update it without a circular dependency on
- * React itself.
+ * Holds the PayScope API access token: a JWT issued by
+ * `POST /api/v1/auth/login` (`../api/auth.ts`) and checked on every
+ * protected request by `require_auth`, see
+ * `backend/app/api/v1/dependencies.py`. Framework-agnostic so both React
+ * (`../auth/AuthContext.tsx`) and the plain API client (`../api/client.ts`)
+ * can read/update it without a circular dependency on React itself.
  *
  * The token lives only in `sessionStorage` (cleared when the tab closes) —
- * never hard-coded, never committed. If storage is unavailable (e.g.
- * private browsing), reads/writes fail silently and the app simply behaves
- * as unauthenticated.
+ * never hard-coded, never committed, and never shown to the user (the login
+ * form never displays it). If storage is unavailable (e.g. private
+ * browsing), reads/writes fail silently and the app simply behaves as
+ * unauthenticated. Trade-off: `sessionStorage` is readable by any script
+ * running on this origin (XSS), same as any other browser-storage-based
+ * token; there is no httpOnly-cookie option available without a backend
+ * session mechanism, which is out of scope here.
  */
 
 const STORAGE_KEY = 'payscope.authToken'
@@ -55,7 +58,7 @@ export function getSessionExpired(): boolean {
   return sessionExpired
 }
 
-/** Stores a user-supplied access token, authenticating the app. */
+/** Stores a backend-issued access token (from a successful login), authenticating the app. */
 export function setToken(token: string): void {
   sessionExpired = false
   writeToken(token)

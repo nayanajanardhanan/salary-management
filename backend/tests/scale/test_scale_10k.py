@@ -35,7 +35,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app import models  # noqa: F401 (registers models on Base.metadata)
-from app.core.config import Settings, get_settings
+from app.core.config import get_settings
 from app.data_generation import generate_employee_dataset
 from app.data_generation.dataset import EmployeeDataset
 from app.db.base import Base
@@ -43,7 +43,7 @@ from app.db.session import create_db_engine, get_db
 from app.main import app
 from app.scripts.seed import seed_database
 from app.utils.pagination import MAX_PAGE_SIZE
-from tests.conftest import TEST_API_TOKEN
+from tests.conftest import TEST_ACCESS_TOKEN, make_test_settings
 
 pytestmark = pytest.mark.scale
 
@@ -76,11 +76,9 @@ def scale_db_session() -> Session:
 def scale_client(scale_db_session: Session) -> TestClient:
     """A `TestClient` against the ~10k-employee database, authenticated like the shared `client` fixture."""
     app.dependency_overrides[get_db] = lambda: scale_db_session
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        _env_file=None, api_token=TEST_API_TOKEN
-    )
+    app.dependency_overrides[get_settings] = lambda: make_test_settings()
     try:
-        yield TestClient(app, headers={"Authorization": f"Bearer {TEST_API_TOKEN}"})
+        yield TestClient(app, headers={"Authorization": f"Bearer {TEST_ACCESS_TOKEN}"})
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_settings, None)

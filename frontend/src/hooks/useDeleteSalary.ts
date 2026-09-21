@@ -30,7 +30,7 @@ const EMPLOYEE_NOT_FOUND_MESSAGE = 'This employee could not be found. They may h
  * flips the app to the unauthenticated state — this hook doesn't
  * special-case it, same as every other data hook here; nor does it
  * special-case a `403`, since nothing in this backend issues one today (see
- * `app.api.v1.dependencies.require_api_token`) — either still surfaces
+ * `app.api.v1.dependencies.require_auth`) — either still surfaces
  * through the generic branch below via the normalized `ApiError` message.
  *
  * Distinguishes the failure shapes from the backend

@@ -3,18 +3,23 @@
 Covers `docs/requirements.md` NFR 4.4 and Acceptance Criterion 8.10: an
 unauthenticated request must not return employee or salary data. Uses the
 `unauthenticated_client` fixture (no `Authorization` header, but a known
-test token configured server-side via a `get_settings` override) so these
-tests behave identically regardless of local `.env` configuration.
+JWT signing secret configured server-side via a `get_settings` override) so
+these tests behave identically regardless of local `.env` configuration.
+Login itself (obtaining a token in the first place) is covered separately by
+`tests/api/test_login.py`.
 """
 
+from datetime import timedelta
 from decimal import Decimal
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.core.config import Settings
 from app.models.employee import Employee
 from app.models.salary import Salary
-from tests.conftest import TEST_API_TOKEN
+from app.services.auth_service import create_access_token
+from tests.conftest import TEST_ACCESS_TOKEN, make_test_settings
 
 
 def _employee(index: int = 1, **overrides) -> Employee:
@@ -141,7 +146,7 @@ def test_malformed_authorization_header_returns_401(
     unauthenticated_client: TestClient, db_session: Session
 ) -> None:
     response = unauthenticated_client.get(
-        "/api/v1/employees", headers={"Authorization": f"Basic {TEST_API_TOKEN}"}
+        "/api/v1/employees", headers={"Authorization": f"Basic {TEST_ACCESS_TOKEN}"}
     )
 
     assert response.status_code == 401
@@ -196,7 +201,44 @@ def test_explicit_valid_bearer_token_is_accepted(
 ) -> None:
     """Sanity-checks the fixed test token itself, independent of the `client` fixture."""
     response = unauthenticated_client.get(
-        "/api/v1/employees", headers={"Authorization": f"Bearer {TEST_API_TOKEN}"}
+        "/api/v1/employees", headers={"Authorization": f"Bearer {TEST_ACCESS_TOKEN}"}
     )
 
     assert response.status_code == 200
+
+
+# --- Expired tokens are rejected exactly like invalid ones -----------------
+
+
+def test_expired_token_returns_401(
+    unauthenticated_client: TestClient, db_session: Session
+) -> None:
+    expired_token = make_test_token_with_delta(timedelta(minutes=-1))
+
+    response = unauthenticated_client.get(
+        "/api/v1/employees", headers={"Authorization": f"Bearer {expired_token}"}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_token_signed_with_a_different_secret_returns_401(
+    unauthenticated_client: TestClient, db_session: Session
+) -> None:
+    token, _ = create_access_token(
+        subject="1",
+        settings=Settings(_env_file=None, jwt_secret_key="a-different-signing-secret-32-bytes-plus"),
+    )
+
+    response = unauthenticated_client.get(
+        "/api/v1/employees", headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def make_test_token_with_delta(delta: timedelta) -> str:
+    token, _ = create_access_token(subject="1", settings=make_test_settings(), expires_delta=delta)
+    return token

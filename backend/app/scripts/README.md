@@ -25,9 +25,17 @@ python -m app.scripts.seed --reset --count 500
 
 ## Required environment variables
 
-None beyond what the app already needs: the database URL is read from
-`PAYSCOPE_DATABASE_URL` (see `backend/README.md`), defaulting to a local
-SQLite file if unset.
+The database URL is read from `PAYSCOPE_DATABASE_URL` (see
+`backend/README.md`), defaulting to a local SQLite file if unset.
+
+The command also seeds one development HR user (see
+[`backend/README.md`](../../README.md#authentication)), from `PAYSCOPE_HR_SEED_USERNAME`,
+`PAYSCOPE_HR_SEED_EMAIL`, and `PAYSCOPE_HR_SEED_PASSWORD`. HR-user seeding
+is skipped (not a hard failure, so the rest of this command keeps working)
+if `PAYSCOPE_HR_SEED_PASSWORD` is unset. Running the command again never
+creates a duplicate HR user — it looks up the existing user by username/email
+first, unaffected by `--reset` (which only clears employee/salary records).
+The password is never printed or logged.
 
 ## Behavior when records already exist
 

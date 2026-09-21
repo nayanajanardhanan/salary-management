@@ -4,13 +4,13 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.core.config import Settings, get_settings
+from app.core.config import get_settings
 from app.core.errors import NotFoundError
 from app.db.session import get_db
 from app.main import app
 from app.models.employee import Employee
 from app.services import employee_service
-from tests.conftest import TEST_API_TOKEN
+from tests.conftest import TEST_ACCESS_TOKEN, make_test_settings
 
 
 def _employee(index: int = 1, **overrides) -> Employee:
@@ -39,14 +39,12 @@ def unsafe_client(db_session: Session) -> TestClient:
     this fixture is scoped to this file rather than changed globally.
     """
     app.dependency_overrides[get_db] = lambda: db_session
-    app.dependency_overrides[get_settings] = lambda: Settings(
-        _env_file=None, api_token=TEST_API_TOKEN
-    )
+    app.dependency_overrides[get_settings] = lambda: make_test_settings()
     try:
         yield TestClient(
             app,
             raise_server_exceptions=False,
-            headers={"Authorization": f"Bearer {TEST_API_TOKEN}"},
+            headers={"Authorization": f"Bearer {TEST_ACCESS_TOKEN}"},
         )
     finally:
         app.dependency_overrides.pop(get_db, None)

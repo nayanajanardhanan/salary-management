@@ -78,6 +78,27 @@ describe('apiRequest', () => {
     expect(headers.has('Authorization')).toBe(false)
   })
 
+  it('does not flag the session as expired for a 401 on a request sent with no token', async () => {
+    // e.g. a failed login attempt (wrong credentials) — there was no
+    // session to begin with, so it must not be reported as "expired".
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { code: 'INVALID_CREDENTIALS', message: 'Incorrect username/email or password.', details: null },
+        }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } },
+      ),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(apiRequest('/api/v1/auth/login')).rejects.toMatchObject({
+      status: 401,
+      code: 'INVALID_CREDENTIALS',
+    } satisfies Partial<ApiError>)
+
+    expect(getSessionExpired()).toBe(false)
+  })
+
   it('clears the stored auth token when the backend responds 401', async () => {
     setToken('stored-token')
     const fetchMock = vi.fn().mockResolvedValue(
