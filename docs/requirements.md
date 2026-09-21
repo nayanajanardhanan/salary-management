@@ -5,8 +5,11 @@
 ### 1.1 Purpose
 
 PayScope is a web-based employee salary management application. It gives HR
-managers a single, structured place to store, view, and analyze employee
-salary information, replacing manual spreadsheet-based tracking.
+managers a single, structured, authenticated place to create, view, update,
+and remove employee and salary records, and to analyze compensation across
+departments and countries, replacing manual spreadsheet-based tracking.
+PayScope is designed for an organization on the order of **10,000
+employees**.
 
 ### 1.2 Problem It Solves
 
@@ -35,6 +38,20 @@ employee self-service.
 1. **View employee salary records**
    As an HR manager, I want to view a list of employees along with their
    salary details, so that I can review individual compensation information.
+
+1a. **Sign in**
+   As an HR manager, I want to sign in with my username or email and
+   password, so that only authorized HR staff can access employee and
+   salary data.
+
+1b. **Manage employee records**
+   As an HR manager, I want to create, update, and remove employee records,
+   so that the system reflects who is currently employed and their current
+   attributes.
+
+1c. **Manage salary records**
+   As an HR manager, I want to create, update, and remove an employee's
+   salary record, so that I can keep their current compensation accurate.
 
 2. **Search employees**
    As an HR manager, I want to search for employees by attributes such as
@@ -65,6 +82,20 @@ employee self-service.
 
 ## 3. Functional Requirements
 
+### 3.0 Authentication
+
+* FR-0.1: The system shall require an HR manager to sign in with a username
+  or email and password before any employee, salary, or analytics data is
+  accessible.
+* FR-0.2: The system shall issue a time-limited access token (JWT) on
+  successful sign-in and require it on every employee, salary, and analytics
+  request.
+* FR-0.3: The system shall reject requests with a missing, invalid, or
+  expired token, and reject sign-in attempts with an incorrect username/email
+  or password, without revealing which part of the credential was wrong.
+* FR-0.4: The system shall store passwords only in hashed form; passwords
+  shall never be stored or logged in plain text.
+
 ### 3.1 Employee Information
 
 * FR-1.1: The system shall store the following core attributes for each
@@ -74,16 +105,33 @@ employee self-service.
   single employee.
 * FR-1.3: The system shall allow an HR manager to view a list of all
   employees.
+* FR-1.4: The system shall allow an HR manager to create a new employee
+  record.
+* FR-1.5: The system shall allow an HR manager to update an existing
+  employee record's attributes.
+* FR-1.6: The system shall allow an HR manager to delete an employee record.
+  Deleting an employee also removes that employee's salary record, since a
+  salary record cannot exist without an associated employee.
 
 ### 3.2 Salary Information
 
 * FR-2.1: The system shall store, for each employee, a salary amount and the
   currency in which that salary is denominated (see Section 5).
-* FR-2.2: The system shall associate exactly one active salary record with
-  each employee for the initial version (salary history is out of scope; see
-  Section 6.2).
+* FR-2.2: The system shall associate at most one active salary record with
+  each employee; this is enforced as a database-level uniqueness constraint,
+  not only an application-level check. Salary history is deliberately out of
+  scope (see Section 5.4 and Section 6.2).
 * FR-2.3: The system shall display an employee's salary together with its
   currency wherever a salary value is shown.
+* FR-2.4: The system shall allow an HR manager to create a salary record for
+  an employee who does not yet have one.
+* FR-2.5: The system shall allow an HR manager to update an employee's
+  existing salary record (amount and/or currency).
+* FR-2.6: The system shall allow an HR manager to delete an employee's
+  salary record without deleting the employee.
+* FR-2.7: The system shall reject an attempt to create a second salary
+  record for an employee who already has one, rather than silently
+  replacing or duplicating it.
 
 ### 3.3 Search
 
@@ -250,29 +298,52 @@ salary data is stored and aggregated:
   remain visible in the product (e.g. through labeling) rather than hidden
   or silently approximated.
 
+### 5.4 One Active Salary Per Employee (Salary Data Model and Scope Decision)
+
+* Each employee has **at most one active salary record** at any time. This
+  is enforced as a database-level uniqueness constraint on the employee-to-
+  salary relationship, not only as an application-level check, so a second
+  salary record for the same employee cannot be created even by a direct
+  database write.
+* **Salary history — tracking or versioning how an employee's salary has
+  changed over time — is deliberately excluded from this system.** Updating
+  an employee's salary overwrites the current amount/currency; the previous
+  value is not retained or queryable. This keeps the data model, the API,
+  and the analytics simple and matches the currently defined product need
+  (understanding *current* compensation), not a historical or audit trail.
+* This exclusion is not treated as an incomplete feature: no partial
+  history mechanism exists anywhere in the system (database, API, or
+  frontend). It is listed as a **potential future enhancement** (Section
+  6.3), should a documented need for compensation-change tracking arise
+  later.
+
 ---
 
 ## 6. Scope
 
-### 6.1 In Scope (Initial Version)
+### 6.1 In Scope (Current Version)
 
-* Storing and viewing employee records with associated salary and currency.
+* HR authentication (username/email and password, JWT-based) required for
+  all employee, salary, and analytics access.
+* Creating, viewing, updating, and deleting employee records.
+* Creating, viewing, updating, and deleting an employee's salary record
+  (with at most one active salary per employee).
 * Searching employees by name and/or employee identifier.
 * Filtering employees by department, country, and salary range (single
   currency at a time).
+* Sorting employee and salary listings.
 * Paginated browsing of employee records.
 * Salary analytics: overall, by department, and by country, computed within
   a single currency at a time.
 * Basic data validation on employee and salary fields.
 * Basic error handling and server-side error logging.
-* Authenticated access to the application.
 
-### 6.2 Out of Scope (Initial Version)
+### 6.2 Out of Scope (Current Version)
 
 * Cross-currency reporting and currency conversion.
-* Salary history / tracking changes to an employee's salary over time.
-* Editing or deleting employee records through the application (initial
-  version is read-oriented; data entry/import method is a separate concern).
+* Salary history / tracking or versioning changes to an employee's salary
+  over time (see Section 5.4). Updating a salary overwrites the current
+  value; the previous value is not retained.
 * Payroll processing, tax calculations, or benefits administration.
 * Employee self-service access.
 * Role-based permission tiers beyond a single authenticated HR manager role.
@@ -294,22 +365,24 @@ salary data is stored and aggregated:
 
 ## 7. Assumptions and Constraints
 
-* It is assumed that employee and salary data will be seeded or imported
-  into the system through a process outside the scope of the end-user
-  interface for the initial version.
+* Individual employee and salary records can be created, updated, and
+  deleted through the application itself (Sections 3.1–3.2). Bulk initial
+  population of a large dataset (e.g. the ~10,000-employee target scale) is
+  expected to happen via a separate seed/import process, not by creating
+  10,000 records one at a time through the UI.
 * It is assumed that each employee has exactly one country, one department,
-  and one active salary at a time.
+  and at most one active salary at a time.
 * It is assumed that a single, fixed reporting currency is not required for
-  the initial version, per Section 5.
-* It is assumed that all users of the application are internal HR staff
-  operating under an existing authentication mechanism; the specifics of
-  that authentication mechanism are not defined by this document.
-* It is assumed that the initial dataset size is on the order of 10,000
+  the current version, per Section 5.
+* It is assumed that all users of the application are internal HR staff,
+  authenticated via the application's own username/email and password login
+  (Section 3.0); there is no separate external identity provider.
+* It is assumed that the target dataset size is on the order of 10,000
   employees, and non-functional requirements are scoped to that volume
   rather than arbitrarily larger scales.
-* This document intentionally avoids specifying implementation technology,
-  architecture, or database design; these are determined during subsequent
-  planning and design work.
+* This document describes product functionality independent of specific
+  implementation technology; see `docs/architecture.md` for the actual
+  technical architecture and stack.
 
 ---
 
@@ -360,3 +433,18 @@ salary data is stored and aggregated:
 
 10. **Access control**: Given an unauthenticated request, the system does
     not return employee or salary data.
+
+11. **Sign-in**: Given a correct username/email and password, the system
+    issues an access token that is accepted on subsequent employee, salary,
+    and analytics requests; given an incorrect username/email or password,
+    the system rejects the sign-in without indicating which part was wrong.
+
+12. **Employee lifecycle**: An HR manager can create an employee record,
+    retrieve it, update its attributes, and delete it; after deletion, the
+    employee (and any associated salary record) is no longer returned by
+    the system.
+
+13. **Salary lifecycle and uniqueness**: An HR manager can create a salary
+    record for an employee who does not have one, update it, and delete it.
+    An attempt to create a second salary record for an employee who already
+    has one is rejected, and the existing record is left unchanged.

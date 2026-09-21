@@ -1,11 +1,11 @@
 # PayScope Backend
 
 FastAPI backend for PayScope. See [`docs/architecture.md`](../docs/architecture.md)
-for the full technical architecture.
+for the full technical architecture, including the complete endpoint list.
 
-This version adds database configuration, session management, and Alembic
-migration infrastructure on top of the initial scaffolding. Employee/salary
-models, migrations, and APIs are added in later steps.
+This service exposes a JWT-authenticated REST API (`/api/v1/...`) for
+employee CRUD, salary CRUD (one active salary per employee, DB-enforced),
+and salary analytics, backed by SQLAlchemy models and Alembic migrations.
 
 ## Setup
 

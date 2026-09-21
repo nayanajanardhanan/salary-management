@@ -69,17 +69,23 @@ server-side revocation: an issued token stays valid until it expires
 
 ```
 src/
-  api/          Shared fetch client (base URL, JSON handling, error normalization)
+  api/          Shared fetch client + auth/employees/analytics API calls
+  auth/         Auth token storage and React auth context
   components/
-    common/     Generic reusable UI (loading, error, error boundary)
+    auth/       ProtectedRoute (router-level auth guard)
+    common/     Generic reusable UI (loading, empty state, error, error boundary, confirm dialog)
+    employee/   Employee table, search, filters, sort, pagination
+    analytics/  Salary stat card and stats table
     layout/     Application shell (header/nav/skip link + routed outlet)
-  hooks/        Reusable hooks
-  pages/        Routed top-level views
+  hooks/        Data-fetching and mutation hooks, one per concern
+  pages/        Routed top-level views: home, login, employee list/details/create,
+                salary create/edit, analytics, not-found
   types/        Shared TypeScript types (mirrors the backend's shared shapes, e.g. the error envelope)
   App.tsx       Route definitions
   main.tsx      Application entry point
-tests/          Vitest + React Testing Library tests, mirroring src/
+tests/          Cross-cutting Vitest + React Testing Library tests (api/auth/components/workflows);
+                most pages and components also have a co-located *.test.tsx next to them in src/
 ```
 
-Employee listing, search/filter, salary, and analytics pages are added in
-later feature commits on top of this foundation.
+See [`docs/architecture.md`](../docs/architecture.md) Section 5 for how these
+pieces fit together (routing, state management, authentication state).
