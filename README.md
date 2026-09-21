@@ -49,7 +49,7 @@ salary-management/
 │   ├── ci.md               # CI workflow reference
 │   └── staging-verification.md  # Staging runbook (script + browser + CI checklist)
 ├── scripts/
-│   └── staging-verify.sh   # Automated staging build/start/migrate/seed/API-check script
+│   └── verify-staging.sh   # Automated staging build/start/migrate/seed/API-check script
 ├── backend/                # FastAPI application (see backend/README.md)
 │   ├── app/
 │   │   ├── api/            # Route modules (v1/routes/, plus an unversioned health route)
@@ -219,7 +219,7 @@ stopping containers, and known limitations), and for why this setup uses
 PostgreSQL in containers even though non-containerized local development
 defaults to SQLite.
 
-On a machine where Docker is actually available, `scripts/staging-verify.sh`
+On a machine where Docker is actually available, `scripts/verify-staging.sh`
 automates building, starting, migrating, seeding, and API-testing this
 stack under isolated throwaway credentials — see
 [`docs/staging-verification.md`](./docs/staging-verification.md) for how to

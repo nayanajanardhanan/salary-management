@@ -245,7 +245,7 @@ If you run this yourself and hit a problem, it has not yet been exercised
 end-to-end — please treat the first real run as the actual first test of
 the container build/startup path, not a formality.
 
-**When you do have Docker available**: [`scripts/staging-verify.sh`](../scripts/staging-verify.sh)
+**When you do have Docker available**: [`scripts/verify-staging.sh`](../scripts/verify-staging.sh)
 automates the build/start/migrate/seed/API-check sequence above end to end
 under isolated, throwaway staging credentials, and reports each check as
 PASS/FAIL/BLOCKED rather than assuming success. See
