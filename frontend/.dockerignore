@@ -1,0 +1,17 @@
+# Not needed in the build context / final image.
+node_modules/
+dist/
+.vite/
+coverage/
+
+# Local environment and secrets — never baked into the image implicitly;
+# VITE_API_BASE_URL is passed explicitly as a build ARG instead (see
+# Dockerfile and docs/deployment.md).
+.env
+.env.*
+!.env.example
+
+.git/
+.gitignore
+.vscode/
+.idea/

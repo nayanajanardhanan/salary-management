@@ -1,0 +1,169 @@
+# Continuous integration for PayScope.
+#
+# Validates pull requests and pushes to main/develop: backend tests
+# (including the opt-in ~10,000-employee scale suite and a PostgreSQL
+# integration test against a CI-only database service), migration/schema
+# drift checks, frontend lint/typecheck/tests/build, and that both Docker
+# images still build. Nothing here publishes an image to a registry or
+# deploys anywhere — see docs/deployment.md for what "deployed" would
+# require. See docs/ci.md for what each job validates, how to reproduce it
+# locally, and what is intentionally excluded (there is no configured
+# backend linter/type-checker to run here — see docs/ci.md).
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+jobs:
+  backend:
+    name: Backend tests and migrations (SQLite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend dependencies
+        run: pip install -e ".[dev]"
+
+      # Default test run (unit + integration + API + auth + model/DB
+      # constraint tests). PostgreSQL and scale tests are excluded here via
+      # pyproject.toml's addopts, and run separately below/in the
+      # backend-postgres job instead — see docs/ci.md.
+      - name: Run backend test suite
+        run: pytest
+
+      - name: Run ~10,000-employee scale test suite
+        run: pytest -m scale
+
+      # No live database is required for these two steps: a fresh CI
+      # checkout has no existing payscope.db (gitignored, never committed),
+      # so this exercises the same schema-creation path a first-time setup
+      # would, against the default local SQLite URL.
+      - name: Apply database migrations (schema creation check)
+        run: alembic upgrade head
+
+      - name: Check for model/migration drift
+        run: alembic check
+
+  backend-postgres:
+    name: Backend PostgreSQL integration test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          # CI-only, throwaway credentials — not used anywhere outside this
+          # job's ephemeral service container.
+          POSTGRES_USER: ci_user
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: payscope_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_user -d payscope_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      PAYSCOPE_DATABASE_URL: postgresql+psycopg://ci_user:ci_password@localhost:5432/payscope_ci
+      PAYSCOPE_TEST_DATABASE_URL: postgresql+psycopg://ci_user:ci_password@localhost:5432/payscope_ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install backend dependencies
+        run: pip install -e ".[dev]"
+
+      # GitHub Actions waits for the postgres service's health check to
+      # pass before running any step, so the database is guaranteed ready
+      # here without an extra wait/poll step.
+      - name: Apply database migrations to PostgreSQL
+        run: alembic upgrade head
+
+      - name: Run PostgreSQL integration test
+        run: pytest -m postgres
+
+  frontend:
+    name: Frontend lint, typecheck, tests, and build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type-check
+        run: npx tsc -b
+
+      # package.json's "test" script is "vitest run" (not the interactive
+      # watch mode "test:watch"), so this exits after one run — safe for CI.
+      - name: Run frontend test suite
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+
+  docker-build:
+    name: Docker image builds (validation only — no push, no deploy)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build backend image
+        run: docker build -t payscope-backend:ci ./backend
+
+      - name: Build frontend image
+        run: >-
+          docker build -t payscope-frontend:ci
+          --build-arg VITE_API_BASE_URL=http://localhost:8000
+          ./frontend
+
+      # Resolves docker-compose.yml (variable interpolation, required
+      # values, service/volume structure) without starting any containers.
+      # CI-only placeholder values satisfy the file's required
+      # POSTGRES_PASSWORD/PAYSCOPE_JWT_SECRET_KEY — never real secrets.
+      - name: Validate docker-compose.yml
+        run: docker compose config
+        env:
+          POSTGRES_PASSWORD: ci-placeholder-postgres-password
+          PAYSCOPE_JWT_SECRET_KEY: ci-placeholder-jwt-secret

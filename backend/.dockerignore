@@ -1,0 +1,27 @@
+# Local environment and secrets — never baked into the image.
+.env
+.env.*
+!.env.example
+
+# Local SQLite database — never shipped in the image; a real deployment
+# provides its own database via PAYSCOPE_DATABASE_URL (see docs/deployment.md).
+*.db
+*.sqlite3
+
+# Virtual environment, caches, and test artifacts — not needed at runtime.
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/
+
+# VCS and editor files.
+.git/
+.gitignore
+.vscode/
+.idea/
