@@ -205,6 +205,41 @@ export function SlidersIcon(props: IconProps) {
   )
 }
 
+export function BuildingIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 21V5a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v16" />
+      <path d="M14 10h5a1 1 0 0 1 1 1v10" />
+      <path d="M4 21h16" />
+      <path d="M8 8h.01" />
+      <path d="M8 12h.01" />
+      <path d="M8 16h.01" />
+      <path d="M17 14h.01" />
+      <path d="M17 17h.01" />
+    </svg>
+  )
+}
+
+export function GlobeIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M2.5 12h19" />
+      <path d="M12 2.5c2.6 2.6 4 6 4 9.5s-1.4 6.9-4 9.5c-2.6-2.6-4-6-4-9.5s1.4-6.9 4-9.5Z" />
+    </svg>
+  )
+}
+
+export function CoinsIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="9" cy="9" r="6" />
+      <path d="M14.5 8.5A6 6 0 1 1 8.4 14.9" />
+      <circle cx="9" cy="9" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export function ShieldIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

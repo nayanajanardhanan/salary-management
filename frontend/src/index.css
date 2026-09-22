@@ -3,11 +3,11 @@
    ========================================================================== */
 
 :root {
-  --color-bg: #f5f6fa;
+  --color-bg: #eef0f9;
   --color-surface: #ffffff;
-  --color-surface-muted: #f8f9fc;
-  --color-border: #e3e5ec;
-  --color-border-strong: #cbcfdb;
+  --color-surface-muted: #f0f0fa;
+  --color-border: #dde0ee;
+  --color-border-strong: #c0c5dc;
 
   --color-text: #14161f;
   --color-text-muted: #565a6c;
@@ -17,8 +17,9 @@
   --color-primary: #4338ca;
   --color-primary-hover: #372ea8;
   --color-primary-active: #2f2790;
-  --color-primary-subtle: #eeecfc;
-  --color-primary-subtle-border: #d6d2f7;
+  --color-primary-subtle: #eae7fc;
+  --color-primary-subtle-border: #d1cbf8;
+  --color-accent-cyan: #17a2c9;
 
   --color-success: #157347;
   --color-success-bg: #eafaf1;
@@ -75,10 +76,10 @@
   --radius-lg: 14px;
   --radius-full: 999px;
 
-  --shadow-xs: 0 1px 2px rgb(20 22 31 / 0.06);
-  --shadow-sm: 0 1px 3px rgb(20 22 31 / 0.08), 0 1px 2px rgb(20 22 31 / 0.04);
-  --shadow-md: 0 4px 12px rgb(20 22 31 / 0.08), 0 2px 4px rgb(20 22 31 / 0.04);
-  --shadow-lg: 0 12px 32px rgb(20 22 31 / 0.14), 0 4px 8px rgb(20 22 31 / 0.06);
+  --shadow-xs: 0 1px 2px rgb(35 30 80 / 0.07);
+  --shadow-sm: 0 2px 6px rgb(35 30 80 / 0.10), 0 1px 2px rgb(35 30 80 / 0.05);
+  --shadow-md: 0 8px 24px rgb(35 30 80 / 0.12), 0 2px 6px rgb(35 30 80 / 0.06);
+  --shadow-lg: 0 20px 45px rgb(35 30 80 / 0.20), 0 6px 14px rgb(35 30 80 / 0.08);
 
   --transition-fast: 120ms ease;
   --transition-base: 180ms ease;
@@ -234,6 +235,17 @@ a {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.app-shell::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--color-primary), #7c6ff0 55%, var(--color-accent-cyan));
+  z-index: 50;
 }
 
 .app-header {
@@ -578,13 +590,15 @@ main.app-content {
 
 .btn-primary {
   border-color: var(--color-primary);
-  background: var(--color-primary);
+  background: linear-gradient(155deg, var(--color-primary-hover), var(--color-primary));
   color: var(--color-text-on-primary);
+  box-shadow: 0 2px 8px rgb(67 56 202 / 0.28);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+  background: linear-gradient(155deg, var(--color-primary-active), var(--color-primary-hover));
   border-color: var(--color-primary-hover);
+  box-shadow: 0 4px 12px rgb(67 56 202 / 0.34);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -840,7 +854,7 @@ main.app-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .toolbar__row {
@@ -887,7 +901,7 @@ main.app-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .analytics-filters .field {
@@ -1040,7 +1054,7 @@ main.app-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .card-padded {
@@ -1263,7 +1277,7 @@ main.app-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 
@@ -1316,7 +1330,7 @@ main.app-content {
 
 .employee-table thead th,
 .salary-stats-table thead th {
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-primary-subtle-border);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
@@ -1448,6 +1462,90 @@ main.app-content {
 }
 
 /* ==========================================================================
+   Bar chart (analytics)
+   ========================================================================== */
+
+.analytics-charts-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.bar-chart__title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-subtle);
+}
+
+.bar-chart__rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.bar-chart__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.bar-chart__label {
+  flex: 0 0 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  color: var(--color-text);
+}
+
+.bar-chart__track {
+  flex: 1;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-subtle);
+  overflow: hidden;
+}
+
+.bar-chart__fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--color-primary), #6a5cf5);
+  transition: width 500ms ease;
+}
+
+.bar-chart__value {
+  flex: 0 0 auto;
+  min-width: 44px;
+  text-align: right;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.bar-chart__empty {
+  margin: 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-sm);
+}
+
+.bar-chart__note {
+  margin: var(--space-3) 0 0;
+  color: var(--color-text-subtle);
+  font-size: var(--font-size-xs);
+}
+
+@media (max-width: 480px) {
+  .bar-chart__label {
+    flex-basis: 84px;
+  }
+}
+
+/* ==========================================================================
    Stat cards (analytics)
    ========================================================================== */
 
@@ -1463,12 +1561,13 @@ main.app-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
   transition: box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .salary-stat-card:hover {
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-strong);
 }
 
 .salary-stat-card__currency {
@@ -1619,7 +1718,7 @@ main.app-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
 }
 
 .form-card-wide {
@@ -2073,7 +2172,7 @@ main.app-content {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
+  box-shadow: var(--shadow-sm);
   text-decoration: none;
   color: inherit;
   transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);

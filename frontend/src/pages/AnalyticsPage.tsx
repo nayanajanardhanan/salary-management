@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AnalyticsFilters } from '../components/analytics/AnalyticsFilters'
+import { BarList, type BarListItem } from '../components/analytics/BarList'
 import { SalaryStatCard } from '../components/analytics/SalaryStatCard'
 import { SalaryStatsTable } from '../components/analytics/SalaryStatsTable'
 import { EmptyState } from '../components/common/EmptyState'
@@ -8,6 +9,25 @@ import { LoadingRegion, SkeletonCards, SkeletonToolbar } from '../components/com
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEmployeeFilterOptions } from '../hooks/useEmployeeFilterOptions'
 import { useSalaryAnalytics } from '../hooks/useSalaryAnalytics'
+import type { CurrencySalaryStats } from '../types/analytics'
+
+/**
+ * Sums `count` across rows sharing the same group label (e.g. every
+ * currency's rows for one department) — safe because a record count is
+ * currency-agnostic (unlike an amount), so adding counts together never
+ * combines salary amounts across currencies. Sorted highest-first for the
+ * bar chart's ranking.
+ */
+function aggregateCounts<T extends CurrencySalaryStats>(rows: T[], getLabel: (row: T) => string): BarListItem[] {
+  const totals = new Map<string, number>()
+  for (const row of rows) {
+    const label = getLabel(row)
+    totals.set(label, (totals.get(label) ?? 0) + row.count)
+  }
+  return Array.from(totals.entries())
+    .map(([label, value]) => ({ label, value, displayValue: value.toLocaleString() }))
+    .sort((a, b) => b.value - a.value)
+}
 
 /**
  * Salary analytics dashboard (`docs/requirements.md` FR-6.1-FR-6.5):
@@ -41,6 +61,19 @@ export function AnalyticsPage() {
   }
 
   const hasResults = data !== null && data.overall.length > 0
+
+  const currencyCountItems: BarListItem[] = useMemo(
+    () =>
+      (data?.overall ?? [])
+        .map((stats) => ({ label: stats.currency, value: stats.count, displayValue: stats.count.toLocaleString() }))
+        .sort((a, b) => b.value - a.value),
+    [data],
+  )
+  const departmentHeadcountItems = useMemo(
+    () => aggregateCounts(data?.by_department ?? [], (row) => row.department),
+    [data],
+  )
+  const countryHeadcountItems = useMemo(() => aggregateCounts(data?.by_country ?? [], (row) => row.country), [data])
 
   return (
     <section aria-labelledby="analytics-heading">
@@ -83,6 +116,9 @@ export function AnalyticsPage() {
             <h2 id="analytics-overall-heading" className="section-heading">
               Overall
             </h2>
+            <div className="analytics-charts-row">
+              <BarList title="Salary records by currency" items={currencyCountItems} />
+            </div>
             <div className="salary-stat-cards">
               {data.overall.map((stats) => (
                 <SalaryStatCard key={stats.currency} stats={stats} />
@@ -94,6 +130,9 @@ export function AnalyticsPage() {
             <h2 id="analytics-department-heading" className="section-heading">
               By department
             </h2>
+            <div className="analytics-charts-row">
+              <BarList title="Employees by department" items={departmentHeadcountItems} />
+            </div>
             <SalaryStatsTable
               rows={data.by_department}
               groupLabel="Department"
@@ -106,6 +145,9 @@ export function AnalyticsPage() {
             <h2 id="analytics-country-heading" className="section-heading">
               By country
             </h2>
+            <div className="analytics-charts-row">
+              <BarList title="Employees by country" items={countryHeadcountItems} />
+            </div>
             <SalaryStatsTable
               rows={data.by_country}
               groupLabel="Country"
