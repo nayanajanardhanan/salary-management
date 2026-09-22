@@ -185,61 +185,63 @@ export function EmployeeSalaryCreatePage() {
               Fields marked <span className="required-mark" aria-hidden="true">*</span> are required.
             </p>
 
-            <div className="field">
-              <label htmlFor="salary-amount-input">
-                {FIELD_LABELS.amount} <span className="required-mark" aria-hidden="true">*</span>
-              </label>
-              <input
-                id="salary-amount-input"
-                name="amount"
-                type="text"
-                inputMode="decimal"
-                required
-                aria-required="true"
-                value={values.amount}
-                onChange={(event) => handleChange('amount', event.target.value)}
-                aria-invalid={fieldErrors.amount ? true : undefined}
-                aria-describedby={fieldErrors.amount ? 'salary-amount-error' : undefined}
-                ref={(element) => {
-                  fieldRefs.current.amount = element
-                }}
-              />
-              {fieldErrors.amount ? (
-                <p id="salary-amount-error" className="field-error" role="alert">
-                  {fieldErrors.amount}
-                </p>
-              ) : null}
-            </div>
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="salary-amount-input">
+                  {FIELD_LABELS.amount} <span className="required-mark" aria-hidden="true">*</span>
+                </label>
+                <input
+                  id="salary-amount-input"
+                  name="amount"
+                  type="text"
+                  inputMode="decimal"
+                  required
+                  aria-required="true"
+                  value={values.amount}
+                  onChange={(event) => handleChange('amount', event.target.value)}
+                  aria-invalid={fieldErrors.amount ? true : undefined}
+                  aria-describedby={fieldErrors.amount ? 'salary-amount-error' : undefined}
+                  ref={(element) => {
+                    fieldRefs.current.amount = element
+                  }}
+                />
+                {fieldErrors.amount ? (
+                  <p id="salary-amount-error" className="field-error" role="alert">
+                    {fieldErrors.amount}
+                  </p>
+                ) : null}
+              </div>
 
-            <div className="field">
-              <label htmlFor="salary-currency-input">
-                {FIELD_LABELS.currency} <span className="required-mark" aria-hidden="true">*</span>
-              </label>
-              <select
-                id="salary-currency-input"
-                name="currency"
-                required
-                aria-required="true"
-                value={values.currency}
-                onChange={(event) => handleChange('currency', event.target.value)}
-                aria-invalid={fieldErrors.currency ? true : undefined}
-                aria-describedby={fieldErrors.currency ? 'salary-currency-error' : undefined}
-                ref={(element) => {
-                  fieldRefs.current.currency = element
-                }}
-              >
-                <option value="">Select a currency</option>
-                {SUPPORTED_CURRENCY_CODES.map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
-              </select>
-              {fieldErrors.currency ? (
-                <p id="salary-currency-error" className="field-error" role="alert">
-                  {fieldErrors.currency}
-                </p>
-              ) : null}
+              <div className="field">
+                <label htmlFor="salary-currency-input">
+                  {FIELD_LABELS.currency} <span className="required-mark" aria-hidden="true">*</span>
+                </label>
+                <select
+                  id="salary-currency-input"
+                  name="currency"
+                  required
+                  aria-required="true"
+                  value={values.currency}
+                  onChange={(event) => handleChange('currency', event.target.value)}
+                  aria-invalid={fieldErrors.currency ? true : undefined}
+                  aria-describedby={fieldErrors.currency ? 'salary-currency-error' : undefined}
+                  ref={(element) => {
+                    fieldRefs.current.currency = element
+                  }}
+                >
+                  <option value="">Select a currency</option>
+                  {SUPPORTED_CURRENCY_CODES.map((code) => (
+                    <option key={code} value={code}>
+                      {code}
+                    </option>
+                  ))}
+                </select>
+                {fieldErrors.currency ? (
+                  <p id="salary-currency-error" className="field-error" role="alert">
+                    {fieldErrors.currency}
+                  </p>
+                ) : null}
+              </div>
             </div>
 
             {formError ? <ErrorMessage message={formError} /> : null}

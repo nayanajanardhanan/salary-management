@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { EmptyState } from '../components/common/EmptyState'
 import { ErrorMessage } from '../components/common/ErrorMessage'
 import { LoadingRegion, SkeletonTable } from '../components/common/LoadingIndicator'
-import { PlusIcon } from '../components/common/icons'
+import { ChevronDownIcon, PlusIcon, SlidersIcon } from '../components/common/icons'
 import { EmployeeFilters } from '../components/employee/EmployeeFilters'
 import { EmployeePagination } from '../components/employee/EmployeePagination'
 import { EmployeeSearch } from '../components/employee/EmployeeSearch'
@@ -71,6 +71,14 @@ export function EmployeeListPage() {
   // asking for.
   const [page, setPage] = useState(DEFAULT_EMPLOYEE_PAGE)
   const [pageSize, setPageSize] = useState(DEFAULT_EMPLOYEE_PAGE_SIZE)
+
+  // Salary range + sort are secondary, so they're tucked behind a "More
+  // filters" toggle to keep the toolbar compact — but forced open whenever
+  // one of them is already active, so an applied filter is never hidden
+  // from view. This is a purely visual collapse (the controls stay mounted
+  // either way), not a mount/unmount, so existing values and validation
+  // state are never lost by toggling it.
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false)
 
   const { data, isLoading, error, retry } = useEmployeeList(appliedSearch, {
     department,
@@ -218,47 +226,68 @@ export function EmployeeListPage() {
         </div>
       </div>
 
-      <EmployeeSearch
-        value={searchInput}
-        onChange={setSearchInput}
-        onSubmit={handleSearchSubmit}
-        onClear={handleSearchClear}
-      />
+      <div className="employee-toolbar card">
+        <div className="employee-toolbar__primary-row">
+          <EmployeeSearch
+            value={searchInput}
+            onChange={setSearchInput}
+            onSubmit={handleSearchSubmit}
+            onClear={handleSearchClear}
+          />
 
-      <EmployeeFilters
-        departments={departments}
-        countries={countries}
-        isLoadingOptions={isLoadingFilterOptions}
-        optionsError={filterOptionsError}
-        department={department}
-        country={country}
-        onDepartmentChange={handleDepartmentChange}
-        onCountryChange={handleCountryChange}
-        onClearAll={handleClearFilters}
-      />
+          <EmployeeFilters
+            departments={departments}
+            countries={countries}
+            isLoadingOptions={isLoadingFilterOptions}
+            optionsError={filterOptionsError}
+            department={department}
+            country={country}
+            onDepartmentChange={handleDepartmentChange}
+            onCountryChange={handleCountryChange}
+            onClearAll={handleClearFilters}
+          />
 
-      <SalaryRangeFilter
-        currencies={currencies}
-        isLoadingCurrencies={isLoadingFilterOptions}
-        currency={currencyInput}
-        minSalary={minSalaryInput}
-        maxSalary={maxSalaryInput}
-        validationError={salaryValidationError}
-        hasActiveFilter={hasSalaryFilter}
-        onCurrencyChange={setCurrencyInput}
-        onMinSalaryChange={setMinSalaryInput}
-        onMaxSalaryChange={setMaxSalaryInput}
-        onSubmit={handleSalarySubmit}
-        onClear={handleSalaryClear}
-      />
+          <button
+            type="button"
+            className="btn btn-sm employee-toolbar__more-toggle"
+            onClick={() => setIsAdvancedOpen((open) => !open)}
+            aria-expanded={isAdvancedOpen || hasSalaryFilter || !isDefaultSort}
+          >
+            <SlidersIcon width={15} height={15} />
+            {isAdvancedOpen || hasSalaryFilter || !isDefaultSort ? 'Fewer filters' : 'More filters'}
+            <ChevronDownIcon width={15} height={15} />
+          </button>
+        </div>
 
-      <EmployeeSort
-        sortBy={sortBy}
-        sortOrder={sortOrder}
-        onSortByChange={handleSortByChange}
-        onSortOrderChange={handleSortOrderChange}
-        onReset={handleSortReset}
-      />
+        <div
+          className={`employee-toolbar__advanced${
+            isAdvancedOpen || hasSalaryFilter || !isDefaultSort ? ' is-open' : ''
+          }`}
+        >
+          <SalaryRangeFilter
+            currencies={currencies}
+            isLoadingCurrencies={isLoadingFilterOptions}
+            currency={currencyInput}
+            minSalary={minSalaryInput}
+            maxSalary={maxSalaryInput}
+            validationError={salaryValidationError}
+            hasActiveFilter={hasSalaryFilter}
+            onCurrencyChange={setCurrencyInput}
+            onMinSalaryChange={setMinSalaryInput}
+            onMaxSalaryChange={setMaxSalaryInput}
+            onSubmit={handleSalarySubmit}
+            onClear={handleSalaryClear}
+          />
+
+          <EmployeeSort
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortByChange={handleSortByChange}
+            onSortOrderChange={handleSortOrderChange}
+            onReset={handleSortReset}
+          />
+        </div>
+      </div>
 
       {isLoading ? (
         <LoadingRegion label="Loading employees…">

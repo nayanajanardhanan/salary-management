@@ -181,6 +181,30 @@ export function ChevronRightIcon(props: IconProps) {
   )
 }
 
+export function ChevronDownIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  )
+}
+
+export function SlidersIcon(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 6h10" />
+      <path d="M18 6h2" />
+      <path d="M4 12h4" />
+      <path d="M12 12h8" />
+      <path d="M4 18h13" />
+      <path d="M21 18h-1" />
+      <circle cx="16" cy="6" r="2" />
+      <circle cx="8" cy="12" r="2" />
+      <circle cx="18" cy="18" r="2" />
+    </svg>
+  )
+}
+
 export function ShieldIcon(props: IconProps) {
   return (
     <svg {...base(props)}>

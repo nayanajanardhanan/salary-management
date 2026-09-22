@@ -10,10 +10,16 @@ const NAV_ITEMS = [
 ]
 
 /**
- * Application shell: skip link, sidebar/mobile nav, and the main landmark
+ * Application shell: skip link, top navigation bar, and the main landmark
  * pages render into via `<Outlet />`. Only reachable while authenticated
  * (see `ProtectedRoute`), so the sign-out control lives here rather than
  * being duplicated on every page.
+ *
+ * The nav links and account/sign-out control are each rendered exactly
+ * once — on narrow screens CSS alone repositions them into a dropdown
+ * below the bar (toggled by `isNavOpen`'s `is-open` class) rather than
+ * rendering a second, mobile-only copy, so there's never more than one
+ * "Sign out" control or one "Analytics" link in the DOM at a time.
  */
 export function AppLayout() {
   const { logout } = useAuth()
@@ -30,90 +36,64 @@ export function AppLayout() {
         Skip to main content
       </a>
 
-      <div
-        className={`app-sidebar-backdrop${isNavOpen ? ' is-open' : ''}`}
-        onClick={() => setIsNavOpen(false)}
-        aria-hidden="true"
-      />
+      <header className={`app-header${isNavOpen ? ' is-open' : ''}`}>
+        <div className="app-header__bar">
+          <span className="app-header__brand">
+            <span className="app-header__brand-mark" aria-hidden="true">
+              <ChartIcon width={18} height={18} />
+            </span>
+            <span className="app-header__brand-name">PayScope</span>
+          </span>
 
-      <aside className={`app-sidebar${isNavOpen ? ' is-open' : ''}`} aria-label="Sidebar">
-        <div className="app-sidebar__brand">
-          <span className="app-sidebar__brand-mark" aria-hidden="true">
-            <ChartIcon width={20} height={20} />
-          </span>
-          <span className="app-sidebar__brand-text">
-            <span className="app-sidebar__brand-name">PayScope</span>
-            <span className="app-sidebar__brand-tagline">Salary management</span>
-          </span>
           <button
             type="button"
-            className="app-sidebar__close"
-            onClick={() => setIsNavOpen(false)}
-            aria-label="Close navigation"
+            className="app-header__menu-button"
+            onClick={() => setIsNavOpen((open) => !open)}
+            aria-label={isNavOpen ? 'Close navigation' : 'Open navigation'}
+            aria-expanded={isNavOpen}
           >
-            <CloseIcon />
+            {isNavOpen ? <CloseIcon /> : <MenuIcon />}
           </button>
-        </div>
 
-        <nav aria-label="Primary">
-          <ul>
-            {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-              <li key={to}>
-                <NavLink to={to} end={end} className="app-sidebar__link">
-                  <Icon />
-                  <span>{label}</span>
-                </NavLink>
-              </li>
-            ))}
-          </ul>
-        </nav>
+          <nav className="app-header__nav" aria-label="Primary">
+            <ul>
+              {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+                <li key={to}>
+                  <NavLink to={to} end={end} className="app-header__link">
+                    <Icon width={17} height={17} />
+                    <span>{label}</span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
 
-        <div className="app-sidebar__footer">
-          <div className="app-sidebar__account">
-            <span className="app-sidebar__avatar" aria-hidden="true">
+          <div className="app-header__account">
+            <span className="app-header__avatar" aria-hidden="true">
               HR
             </span>
-            <span className="app-sidebar__account-text">
-              <span className="app-sidebar__account-role">HR Manager</span>
-              <span className="app-sidebar__account-sub">Signed in</span>
+            <span className="app-header__account-text">
+              <span className="app-header__account-role">HR Manager</span>
+              <span className="app-header__account-sub">Signed in</span>
             </span>
+            <button
+              type="button"
+              className="app-header__signout"
+              onClick={logout}
+              aria-label="Sign out"
+              title="Sign out"
+            >
+              <LogOutIcon width={17} height={17} />
+            </button>
           </div>
-          <button
-            type="button"
-            className="app-sidebar__signout"
-            onClick={logout}
-            aria-label="Sign out"
-            title="Sign out"
-          >
-            <LogOutIcon />
-          </button>
         </div>
-      </aside>
+      </header>
 
-      <div className="app-main">
-        <header className="app-topbar">
-          <button
-            type="button"
-            className="app-topbar__menu-button"
-            onClick={() => setIsNavOpen(true)}
-            aria-label="Open navigation"
-          >
-            <MenuIcon />
-          </button>
-          <span className="app-topbar__brand">
-            <span className="app-topbar__brand-mark" aria-hidden="true">
-              <ChartIcon width={16} height={16} />
-            </span>
-            PayScope
-          </span>
-        </header>
-
-        <main id="main-content" className="app-content" tabIndex={-1}>
-          <div className="page-container">
-            <Outlet />
-          </div>
-        </main>
-      </div>
+      <main id="main-content" className="app-content" tabIndex={-1}>
+        <div className="page-container">
+          <Outlet />
+        </div>
+      </main>
     </div>
   )
 }

@@ -111,6 +111,36 @@ export function EmployeeCreatePage() {
     setValues((current) => ({ ...current, [field]: value }))
   }
 
+  function renderField(field: TextField) {
+    return (
+      <div className="field" key={field}>
+        <label htmlFor={`employee-${field}-input`}>
+          {FIELD_LABELS[field]} <span className="required-mark" aria-hidden="true">*</span>
+        </label>
+        <input
+          id={`employee-${field}-input`}
+          name={field}
+          type="text"
+          required
+          aria-required="true"
+          maxLength={FIELD_MAX_LENGTHS[field]}
+          value={values[field]}
+          onChange={(event) => handleChange(field, event.target.value)}
+          aria-invalid={fieldErrors[field] ? true : undefined}
+          aria-describedby={fieldErrors[field] ? `employee-${field}-error` : undefined}
+          ref={(element) => {
+            fieldRefs.current[field] = element
+          }}
+        />
+        {fieldErrors[field] ? (
+          <p id={`employee-${field}-error`} className="field-error" role="alert">
+            {fieldErrors[field]}
+          </p>
+        ) : null}
+      </div>
+    )
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (isSubmitting) {
@@ -177,53 +207,42 @@ export function EmployeeCreatePage() {
         </div>
       </div>
 
-      <form className="employee-create-form form-card" onSubmit={handleSubmit} noValidate>
+      <form className="employee-create-form form-card form-card-wide" onSubmit={handleSubmit} noValidate>
         <p className="employee-create-form__required-note">
           Fields marked <span className="required-mark" aria-hidden="true">*</span> are required.
         </p>
 
-        {TEXT_FIELDS.map((field) => (
-          <div className="field" key={field}>
-            <label htmlFor={`employee-${field}-input`}>
-              {FIELD_LABELS[field]} <span className="required-mark" aria-hidden="true">*</span>
-            </label>
-            <input
-              id={`employee-${field}-input`}
-              name={field}
-              type="text"
-              required
-              aria-required="true"
-              maxLength={FIELD_MAX_LENGTHS[field]}
-              value={values[field]}
-              onChange={(event) => handleChange(field, event.target.value)}
-              aria-invalid={fieldErrors[field] ? true : undefined}
-              aria-describedby={fieldErrors[field] ? `employee-${field}-error` : undefined}
-              ref={(element) => {
-                fieldRefs.current[field] = element
-              }}
-            />
-            {fieldErrors[field] ? (
-              <p id={`employee-${field}-error`} className="field-error" role="alert">
-                {fieldErrors[field]}
-              </p>
-            ) : null}
+        <div className="form-section">
+          <h2 className="form-section__title">Identity</h2>
+          <div className="form-grid">
+            <div className="form-grid__full">{renderField('employee_code')}</div>
+            {renderField('first_name')}
+            {renderField('last_name')}
           </div>
-        ))}
+        </div>
 
-        <div className="field">
-          <label htmlFor="employee-employment-status-input">Employment status</label>
-          <select
-            id="employee-employment-status-input"
-            name="employment_status"
-            value={values.employment_status}
-            onChange={(event) => handleChange('employment_status', event.target.value)}
-          >
-            {EMPLOYMENT_STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+        <div className="form-section">
+          <h2 className="form-section__title">Assignment</h2>
+          <div className="form-grid">
+            {renderField('department')}
+            {renderField('country')}
+            {renderField('job_title')}
+            <div className="field">
+              <label htmlFor="employee-employment-status-input">Employment status</label>
+              <select
+                id="employee-employment-status-input"
+                name="employment_status"
+                value={values.employment_status}
+                onChange={(event) => handleChange('employment_status', event.target.value)}
+              >
+                {EMPLOYMENT_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         {formError ? <ErrorMessage message={formError} /> : null}
