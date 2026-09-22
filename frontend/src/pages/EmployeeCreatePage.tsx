@@ -173,20 +173,24 @@ export function EmployeeCreatePage() {
     return (
       <section aria-labelledby="employee-create-heading">
         <h1 id="employee-create-heading">Add Employee</h1>
-        <div className="success-panel" role="status">
-          <span className="success-panel__icon" aria-hidden="true">
-            <CheckCircleIcon width={20} height={20} />
-          </span>
-          <div className="success-panel__body">
-            <p>
+        <div className="success-screen">
+          <div className="success-panel" role="status">
+            <span className="success-panel__icon" aria-hidden="true">
+              <CheckCircleIcon width={28} height={28} />
+            </span>
+            <p className="success-panel__title">Employee created</p>
+            <p className="success-panel__message">
               Employee <strong>{formatEmployeeName(createdEmployee)}</strong> (
               {createdEmployee.employee_code}) was created successfully.
             </p>
-            <p className="employee-create__success-actions">
-              <Link to={`/employees/${createdEmployee.id}`}>View employee details</Link>
-              {' · '}
-              <Link to="/employees">Back to employee listing</Link>
-            </p>
+            <div className="success-panel__actions">
+              <Link to={`/employees/${createdEmployee.id}`} className="btn btn-primary">
+                View employee details
+              </Link>
+              <Link to="/employees" className="btn">
+                Back to employee listing
+              </Link>
+            </div>
           </div>
         </div>
       </section>

@@ -128,20 +128,24 @@ export function EmployeeSalaryCreatePage() {
     return (
       <section aria-labelledby="salary-create-heading">
         <h1 id="salary-create-heading">Add Salary</h1>
-        <div className="success-panel" role="status">
-          <span className="success-panel__icon" aria-hidden="true">
-            <CheckCircleIcon width={20} height={20} />
-          </span>
-          <div className="success-panel__body">
-            <p>
+        <div className="success-screen">
+          <div className="success-panel" role="status">
+            <span className="success-panel__icon" aria-hidden="true">
+              <CheckCircleIcon width={28} height={28} />
+            </span>
+            <p className="success-panel__title">Salary added</p>
+            <p className="success-panel__message">
               A salary of <strong>{formatSalaryAmount(createdSalary.amount, createdSalary.currency)}</strong> was
               added for <strong>{formatEmployeeName(employee)}</strong> ({employee.employee_code}).
             </p>
-            <p className="salary-create__success-actions">
-              <Link to={`/employees/${employee.id}`}>View employee details</Link>
-              {' · '}
-              <Link to="/employees">Back to employee listing</Link>
-            </p>
+            <div className="success-panel__actions">
+              <Link to={`/employees/${employee.id}`} className="btn btn-primary">
+                View employee details
+              </Link>
+              <Link to="/employees" className="btn">
+                Back to employee listing
+              </Link>
+            </div>
           </div>
         </div>
       </section>

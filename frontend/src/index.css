@@ -1913,14 +1913,27 @@ main.app-content {
   color: var(--color-text);
 }
 
+.success-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: min(60vh, 520px);
+  padding: var(--space-8) var(--space-4);
+}
+
 .success-panel {
-  max-width: 560px;
-  padding: var(--space-6);
-  background: var(--color-success-bg);
+  width: 100%;
+  max-width: 460px;
+  padding: var(--space-8) var(--space-6);
+  background: var(--color-surface);
   border: 1px solid var(--color-success-border);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
   display: flex;
-  gap: var(--space-4);
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2);
   animation: state-fade-in 320ms ease both;
 }
 
@@ -1928,31 +1941,39 @@ main.app-content {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   border-radius: var(--radius-full);
-  background: var(--color-surface);
+  background: var(--color-success-bg);
   color: var(--color-success);
   flex-shrink: 0;
+  margin-bottom: var(--space-2);
 }
 
-.success-panel__body p {
-  color: var(--color-text);
-  margin: 0 0 var(--space-3);
-}
-
-.success-panel__body p:last-child {
-  margin-bottom: 0;
-}
-
-.success-panel a {
-  font-weight: var(--font-weight-medium);
-}
-
-.employee-create__success-actions,
-.salary-create__success-actions,
-.salary-edit__success-actions {
+.success-panel__title {
   margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text);
+}
+
+.success-panel__message {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+}
+
+.success-panel__message strong {
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.success-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
 
 .salary-edit__actions {
@@ -2342,6 +2363,24 @@ main.app-content {
   margin: 0;
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
+}
+
+/* ==========================================================================
+   App-level crash screen (ErrorBoundary fallback)
+   ========================================================================== */
+
+.app-crash-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--color-bg);
+}
+
+.app-crash-screen__inner {
+  width: 100%;
+  max-width: 480px;
 }
 
 /* ==========================================================================

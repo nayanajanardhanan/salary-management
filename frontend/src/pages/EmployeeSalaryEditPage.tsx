@@ -235,21 +235,25 @@ export function EmployeeSalaryEditPage() {
     return (
       <section aria-labelledby="salary-edit-heading">
         <h1 id="salary-edit-heading">Edit Salary</h1>
-        <div className="success-panel" role="status">
-          <span className="success-panel__icon" aria-hidden="true">
-            <CheckCircleIcon width={20} height={20} />
-          </span>
-          <div className="success-panel__body">
-            <p>
+        <div className="success-screen">
+          <div className="success-panel" role="status">
+            <span className="success-panel__icon" aria-hidden="true">
+              <CheckCircleIcon width={28} height={28} />
+            </span>
+            <p className="success-panel__title">Salary updated</p>
+            <p className="success-panel__message">
               The salary for <strong>{formatEmployeeName(data.employee)}</strong> (
               {data.employee.employee_code}) was updated to{' '}
               <strong>{formatSalaryAmount(updatedSalary.amount, updatedSalary.currency)}</strong>.
             </p>
-            <p className="salary-edit__success-actions">
-              <Link to={`/employees/${data.employee.id}`}>View employee details</Link>
-              {' · '}
-              <Link to="/employees">Back to employee listing</Link>
-            </p>
+            <div className="success-panel__actions">
+              <Link to={`/employees/${data.employee.id}`} className="btn btn-primary">
+                View employee details
+              </Link>
+              <Link to="/employees" className="btn">
+                Back to employee listing
+              </Link>
+            </div>
           </div>
         </div>
       </section>

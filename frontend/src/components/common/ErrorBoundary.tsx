@@ -33,10 +33,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   render(): ReactNode {
     if (this.state.hasError) {
       return (
-        <ErrorMessage
-          message="Something went wrong while displaying this page."
-          onRetry={this.handleReset}
-        />
+        <div className="app-crash-screen">
+          <div className="app-crash-screen__inner">
+            <ErrorMessage
+              message="Something went wrong while displaying this page."
+              onRetry={this.handleReset}
+            />
+          </div>
+        </div>
       )
     }
 
