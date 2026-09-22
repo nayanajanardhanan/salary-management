@@ -264,28 +264,30 @@ export function EmployeeListPage() {
             isAdvancedOpen || hasSalaryFilter || !isDefaultSort ? ' is-open' : ''
           }`}
         >
-          <SalaryRangeFilter
-            currencies={currencies}
-            isLoadingCurrencies={isLoadingFilterOptions}
-            currency={currencyInput}
-            minSalary={minSalaryInput}
-            maxSalary={maxSalaryInput}
-            validationError={salaryValidationError}
-            hasActiveFilter={hasSalaryFilter}
-            onCurrencyChange={setCurrencyInput}
-            onMinSalaryChange={setMinSalaryInput}
-            onMaxSalaryChange={setMaxSalaryInput}
-            onSubmit={handleSalarySubmit}
-            onClear={handleSalaryClear}
-          />
+          <div className="employee-toolbar__advanced-inner">
+            <SalaryRangeFilter
+              currencies={currencies}
+              isLoadingCurrencies={isLoadingFilterOptions}
+              currency={currencyInput}
+              minSalary={minSalaryInput}
+              maxSalary={maxSalaryInput}
+              validationError={salaryValidationError}
+              hasActiveFilter={hasSalaryFilter}
+              onCurrencyChange={setCurrencyInput}
+              onMinSalaryChange={setMinSalaryInput}
+              onMaxSalaryChange={setMaxSalaryInput}
+              onSubmit={handleSalarySubmit}
+              onClear={handleSalaryClear}
+            />
 
-          <EmployeeSort
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSortByChange={handleSortByChange}
-            onSortOrderChange={handleSortOrderChange}
-            onReset={handleSortReset}
-          />
+            <EmployeeSort
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortByChange={handleSortByChange}
+              onSortOrderChange={handleSortOrderChange}
+              onReset={handleSortReset}
+            />
+          </div>
         </div>
       </div>
 

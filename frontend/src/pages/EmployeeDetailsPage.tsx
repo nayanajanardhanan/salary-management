@@ -111,8 +111,8 @@ export function EmployeeDetailsPage() {
       ) : error ? (
         <ErrorMessage message={error} onRetry={retry} />
       ) : data ? (
-        <div className="details-grid">
-          <section aria-labelledby="employee-details-info-heading" className="card card-padded">
+        <div className="details-card card">
+          <section aria-labelledby="employee-details-info-heading" className="details-card__section">
             <h2 id="employee-details-info-heading" className="section-heading">
               Employee
             </h2>
@@ -153,7 +153,9 @@ export function EmployeeDetailsPage() {
             </dl>
           </section>
 
-          <section aria-labelledby="employee-details-salary-heading" className="card card-padded">
+          <div className="details-card__divider" aria-hidden="true" />
+
+          <section aria-labelledby="employee-details-salary-heading" className="details-card__section">
             <h2 id="employee-details-salary-heading" className="section-heading">
               Current salary
             </h2>

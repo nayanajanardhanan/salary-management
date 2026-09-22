@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+
 export interface BarListItem {
   label: string
   value: number
@@ -24,6 +26,17 @@ export function BarList({ title, items, emptyMessage = 'No data available.', max
   const maxValue = Math.max(1, ...shown.map((item) => item.value))
   const hiddenCount = items.length - shown.length
 
+  // Bars grow in from zero on mount/update, rather than snapping straight to
+  // their final width — `isGrown` starts false so the first paint has every
+  // fill at 0%, then flips true on the next frame so the CSS `width`
+  // transition (see `.bar-chart__fill`) actually has something to animate.
+  const [isGrown, setIsGrown] = useState(false)
+  useEffect(() => {
+    setIsGrown(false)
+    const frame = requestAnimationFrame(() => setIsGrown(true))
+    return () => cancelAnimationFrame(frame)
+  }, [items])
+
   return (
     <div className="bar-chart card card-padded" aria-hidden="true">
       <h3 className="bar-chart__title">{title}</h3>
@@ -36,7 +49,10 @@ export function BarList({ title, items, emptyMessage = 'No data available.', max
               <div className="bar-chart__row" key={item.label} title={`${item.label}: ${item.displayValue}`}>
                 <span className="bar-chart__label">{item.label}</span>
                 <div className="bar-chart__track">
-                  <div className="bar-chart__fill" style={{ width: `${(item.value / maxValue) * 100}%` }} />
+                  <div
+                    className="bar-chart__fill"
+                    style={{ width: isGrown ? `${(item.value / maxValue) * 100}%` : '0%' }}
+                  />
                 </div>
                 <span className="bar-chart__value">{item.displayValue}</span>
               </div>

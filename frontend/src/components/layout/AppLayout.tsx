@@ -91,7 +91,9 @@ export function AppLayout() {
 
       <main id="main-content" className="app-content" tabIndex={-1}>
         <div className="page-container">
-          <Outlet />
+          <div className="page-transition" key={location.pathname}>
+            <Outlet />
+          </div>
         </div>
       </main>
     </div>

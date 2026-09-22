@@ -214,8 +214,8 @@ export function EmployeeCreatePage() {
 
         <div className="form-section">
           <h2 className="form-section__title">Identity</h2>
-          <div className="form-grid">
-            <div className="form-grid__full">{renderField('employee_code')}</div>
+          <div className="form-grid form-grid--3col">
+            {renderField('employee_code')}
             {renderField('first_name')}
             {renderField('last_name')}
           </div>

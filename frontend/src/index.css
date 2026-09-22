@@ -86,7 +86,7 @@
 
   --sidebar-width: 260px;
   --topbar-height: 64px;
-  --content-max-width: 1180px;
+  --content-max-width: 1320px;
 
   color-scheme: light dark;
   color: var(--color-text);
@@ -181,6 +181,7 @@ a {
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
@@ -420,6 +421,21 @@ main.app-content {
   margin: 0 auto;
 }
 
+.page-transition {
+  animation: page-fade-in 260ms ease-out both;
+}
+
+@keyframes page-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 900px) {
   .app-header__bar {
     flex-wrap: wrap;
@@ -434,14 +450,18 @@ main.app-content {
 
   .app-header__nav,
   .app-header__account {
-    display: none;
     flex-basis: 100%;
     margin-left: 0;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 260ms ease, opacity 180ms ease;
   }
 
   .app-header.is-open .app-header__nav,
   .app-header.is-open .app-header__account {
-    display: flex;
+    max-height: 420px;
+    opacity: 1;
   }
 
   .app-header__nav {
@@ -576,6 +596,7 @@ main.app-content {
 .btn:hover {
   background: var(--color-surface-muted);
   border-color: var(--color-border-strong);
+  box-shadow: var(--shadow-xs);
 }
 
 .btn:active {
@@ -994,15 +1015,23 @@ main.app-content {
 }
 
 .employee-toolbar__advanced {
-  display: none;
-  flex-direction: column;
-  gap: var(--space-4);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--color-border);
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms ease;
 }
 
 .employee-toolbar__advanced.is-open {
+  grid-template-rows: 1fr;
+}
+
+.employee-toolbar__advanced-inner {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+  overflow: hidden;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
 }
 
 .employee-toolbar__result-count {
@@ -1197,6 +1226,17 @@ main.app-content {
   border-radius: var(--radius-lg);
 }
 
+@keyframes state-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -1209,6 +1249,7 @@ main.app-content {
   border-radius: var(--radius-lg);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
+  animation: state-fade-in 280ms ease both;
 }
 
 .empty-state__icon {
@@ -1237,6 +1278,7 @@ main.app-content {
   background: var(--color-error-bg);
   color: var(--color-error);
   border-radius: var(--radius-lg);
+  animation: state-fade-in 280ms ease both;
 }
 
 .error-message__icon {
@@ -1314,12 +1356,40 @@ main.app-content {
 .employee-table tbody tr,
 .salary-stats-table tbody tr {
   transition: background var(--transition-fast);
+  animation: row-fade-in 320ms ease both;
 }
 
 .employee-table tbody tr:hover,
 .salary-stats-table tbody tr:hover {
   background: var(--color-surface-muted);
 }
+
+@keyframes row-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.employee-table tbody tr:nth-child(n+11),
+.salary-stats-table tbody tr:nth-child(n+11) {
+  animation-delay: 0ms;
+}
+
+.employee-table tbody tr:nth-child(1), .salary-stats-table tbody tr:nth-child(1) { animation-delay: 0ms; }
+.employee-table tbody tr:nth-child(2), .salary-stats-table tbody tr:nth-child(2) { animation-delay: 25ms; }
+.employee-table tbody tr:nth-child(3), .salary-stats-table tbody tr:nth-child(3) { animation-delay: 50ms; }
+.employee-table tbody tr:nth-child(4), .salary-stats-table tbody tr:nth-child(4) { animation-delay: 75ms; }
+.employee-table tbody tr:nth-child(5), .salary-stats-table tbody tr:nth-child(5) { animation-delay: 100ms; }
+.employee-table tbody tr:nth-child(6), .salary-stats-table tbody tr:nth-child(6) { animation-delay: 125ms; }
+.employee-table tbody tr:nth-child(7), .salary-stats-table tbody tr:nth-child(7) { animation-delay: 150ms; }
+.employee-table tbody tr:nth-child(8), .salary-stats-table tbody tr:nth-child(8) { animation-delay: 175ms; }
+.employee-table tbody tr:nth-child(9), .salary-stats-table tbody tr:nth-child(9) { animation-delay: 200ms; }
+.employee-table tbody tr:nth-child(10), .salary-stats-table tbody tr:nth-child(10) { animation-delay: 225ms; }
 
 .employee-table tbody tr:last-child td,
 .employee-table tbody tr:last-child th,
@@ -1563,7 +1633,25 @@ main.app-content {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+  animation: card-fade-in 360ms ease both;
 }
+
+@keyframes card-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.salary-stat-card:nth-child(1) { animation-delay: 0ms; }
+.salary-stat-card:nth-child(2) { animation-delay: 60ms; }
+.salary-stat-card:nth-child(3) { animation-delay: 120ms; }
+.salary-stat-card:nth-child(4) { animation-delay: 180ms; }
+.salary-stat-card:nth-child(n+5) { animation-delay: 240ms; }
 
 .salary-stat-card:hover {
   box-shadow: var(--shadow-md);
@@ -1622,16 +1710,30 @@ main.app-content {
    Employee / salary details
    ========================================================================== */
 
-.details-grid {
+.details-card {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-6);
-  align-items: start;
+  grid-template-columns: 3fr auto 2fr;
+  align-items: stretch;
+}
+
+.details-card__section {
+  padding: var(--space-6);
+  min-width: 0;
+}
+
+.details-card__divider {
+  width: 1px;
+  background: var(--color-border);
 }
 
 @media (max-width: 900px) {
-  .details-grid {
+  .details-card {
     grid-template-columns: 1fr;
+  }
+
+  .details-card__divider {
+    width: auto;
+    height: 1px;
   }
 }
 
@@ -1713,7 +1815,7 @@ main.app-content {
    ========================================================================== */
 
 .form-card {
-  max-width: 560px;
+  max-width: 600px;
   padding: var(--space-6);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -1722,7 +1824,7 @@ main.app-content {
 }
 
 .form-card-wide {
-  max-width: 720px;
+  max-width: 860px;
 }
 
 .form-section + .form-section {
@@ -1750,8 +1852,24 @@ main.app-content {
   grid-column: 1 / -1;
 }
 
+.form-grid--3col {
+  grid-template-columns: repeat(3, 1fr);
+}
+
 @media (max-width: 560px) {
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .form-grid--3col {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .form-grid--3col {
     grid-template-columns: 1fr;
   }
 }
@@ -1803,6 +1921,7 @@ main.app-content {
   border-radius: var(--radius-lg);
   display: flex;
   gap: var(--space-4);
+  animation: state-fade-in 320ms ease both;
 }
 
 .success-panel__icon {
@@ -2176,7 +2295,12 @@ main.app-content {
   text-decoration: none;
   color: inherit;
   transition: box-shadow var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+  animation: card-fade-in 400ms ease both;
 }
+
+.feature-card:nth-child(1) { animation-delay: 60ms; }
+.feature-card:nth-child(2) { animation-delay: 130ms; }
+.feature-card:nth-child(n+3) { animation-delay: 200ms; }
 
 .feature-card:hover {
   box-shadow: var(--shadow-md);
