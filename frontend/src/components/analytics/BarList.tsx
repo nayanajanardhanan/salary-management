@@ -12,6 +12,8 @@ interface BarListProps {
   emptyMessage?: string
   /** How many of `items` (already sorted by the caller) to actually draw as bars. */
   maxBars?: number
+  /** Accent color for the fill/track, purely visual — defaults to the brand primary. */
+  tone?: 'purple' | 'teal' | 'pink'
 }
 
 /**
@@ -21,7 +23,13 @@ interface BarListProps {
  * accessible table, so this chart is `aria-hidden` rather than duplicating
  * that table's content for assistive tech.
  */
-export function BarList({ title, items, emptyMessage = 'No data available.', maxBars = 8 }: BarListProps) {
+export function BarList({
+  title,
+  items,
+  emptyMessage = 'No data available.',
+  maxBars = 8,
+  tone = 'purple',
+}: BarListProps) {
   const shown = items.slice(0, maxBars)
   const maxValue = Math.max(1, ...shown.map((item) => item.value))
   const hiddenCount = items.length - shown.length
@@ -38,7 +46,7 @@ export function BarList({ title, items, emptyMessage = 'No data available.', max
   }, [items])
 
   return (
-    <div className="bar-chart card card-padded" aria-hidden="true">
+    <div className={`bar-chart card card-padded bar-chart--${tone}`} aria-hidden="true">
       <h3 className="bar-chart__title">{title}</h3>
       {shown.length === 0 ? (
         <p className="bar-chart__empty">{emptyMessage}</p>

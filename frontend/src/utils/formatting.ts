@@ -5,6 +5,11 @@ export function formatEmployeeName(employee: Pick<EmployeeListItem, 'first_name'
   return `${employee.first_name} ${employee.last_name}`
 }
 
+/** `"FL"` avatar initials, for display purposes only (not a stored field). */
+export function formatInitials(employee: Pick<EmployeeListItem, 'first_name' | 'last_name'>): string {
+  return `${employee.first_name.charAt(0)}${employee.last_name.charAt(0)}`.toUpperCase()
+}
+
 /**
  * Formats a salary amount together with its currency code, without
  * converting or combining it with any other currency (`docs/requirements.md`

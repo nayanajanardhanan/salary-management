@@ -36,49 +36,67 @@ export function AppLayout() {
         Skip to main content
       </a>
 
-      <header className={`app-header${isNavOpen ? ' is-open' : ''}`}>
-        <div className="app-header__bar">
-          <span className="app-header__brand">
-            <span className="app-header__brand-mark" aria-hidden="true">
-              <ChartIcon width={18} height={18} />
-            </span>
-            <span className="app-header__brand-name">PayScope</span>
+      <div className="sidebar__topbar">
+        <span className="sidebar__topbar-brand">
+          <span className="sidebar__brand-mark" aria-hidden="true">
+            <ChartIcon width={18} height={18} />
           </span>
+          <span className="sidebar__brand-name">PayScope</span>
+        </span>
 
-          <button
-            type="button"
-            className="app-header__menu-button"
-            onClick={() => setIsNavOpen((open) => !open)}
-            aria-label={isNavOpen ? 'Close navigation' : 'Open navigation'}
-            aria-expanded={isNavOpen}
-          >
-            {isNavOpen ? <CloseIcon /> : <MenuIcon />}
-          </button>
+        <button
+          type="button"
+          className="sidebar__menu-button"
+          onClick={() => setIsNavOpen((open) => !open)}
+          aria-label={isNavOpen ? 'Close navigation' : 'Open navigation'}
+          aria-expanded={isNavOpen}
+        >
+          {isNavOpen ? <CloseIcon /> : <MenuIcon />}
+        </button>
+      </div>
 
-          <nav className="app-header__nav" aria-label="Primary">
-            <ul>
-              {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
-                <li key={to}>
-                  <NavLink to={to} end={end} className="app-header__link">
-                    <Icon width={17} height={17} />
-                    <span>{label}</span>
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </nav>
+      {isNavOpen && (
+        <button
+          type="button"
+          className="sidebar__backdrop"
+          onClick={() => setIsNavOpen(false)}
+          aria-label="Close navigation"
+        />
+      )}
 
-          <div className="app-header__account">
-            <span className="app-header__avatar" aria-hidden="true">
+      <aside className={`sidebar${isNavOpen ? ' is-open' : ''}`}>
+        <span className="sidebar__brand">
+          <span className="sidebar__brand-mark" aria-hidden="true">
+            <ChartIcon width={18} height={18} />
+          </span>
+          <span className="sidebar__brand-name">PayScope</span>
+        </span>
+
+        <nav className="sidebar__nav" aria-label="Primary">
+          <ul>
+            {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+              <li key={to}>
+                <NavLink to={to} end={end} className="sidebar__link">
+                  <Icon width={18} height={18} />
+                  <span>{label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="sidebar__footer">
+          <div className="sidebar__account">
+            <span className="sidebar__avatar" aria-hidden="true">
               HR
             </span>
-            <span className="app-header__account-text">
-              <span className="app-header__account-role">HR Manager</span>
-              <span className="app-header__account-sub">Signed in</span>
+            <span className="sidebar__account-text">
+              <span className="sidebar__account-role">HR Manager</span>
+              <span className="sidebar__account-sub">Signed in</span>
             </span>
             <button
               type="button"
-              className="app-header__signout"
+              className="sidebar__signout"
               onClick={logout}
               aria-label="Sign out"
               title="Sign out"
@@ -87,15 +105,17 @@ export function AppLayout() {
             </button>
           </div>
         </div>
-      </header>
+      </aside>
 
-      <main id="main-content" className="app-content" tabIndex={-1}>
-        <div className="page-container">
-          <div className="page-transition" key={location.pathname}>
-            <Outlet />
+      <div className="app-main">
+        <main id="main-content" className="app-content" tabIndex={-1}>
+          <div className="page-container">
+            <div className="page-transition" key={location.pathname}>
+              <Outlet />
+            </div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   )
 }

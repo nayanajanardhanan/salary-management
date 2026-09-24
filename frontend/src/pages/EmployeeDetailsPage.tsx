@@ -8,7 +8,7 @@ import { ArrowLeftIcon, CheckCircleIcon, PencilIcon, TrashIcon } from '../compon
 import { useDeleteSalary } from '../hooks/useDeleteSalary'
 import { useDocumentTitle } from '../hooks/useDocumentTitle'
 import { useEmployeeDetails } from '../hooks/useEmployeeDetails'
-import { formatEmployeeName, formatPlainAmount } from '../utils/formatting'
+import { formatEmployeeName, formatInitials, formatPlainAmount } from '../utils/formatting'
 
 const EMPLOYMENT_STATUS_LABELS: Record<string, string> = {
   active: 'Active',
@@ -84,7 +84,12 @@ export function EmployeeDetailsPage() {
       </Link>
 
       <div className="page-header">
-        <div className="page-header__text">
+        <div className="page-header__text page-header__text--with-avatar">
+          {data ? (
+            <span className="page-header__avatar" aria-hidden="true">
+              {formatInitials(data.employee)}
+            </span>
+          ) : null}
           <h1 id="employee-details-heading">{data ? formatEmployeeName(data.employee) : 'Employee details'}</h1>
         </div>
       </div>
@@ -155,7 +160,10 @@ export function EmployeeDetailsPage() {
 
           <div className="details-card__divider" aria-hidden="true" />
 
-          <section aria-labelledby="employee-details-salary-heading" className="details-card__section">
+          <section
+            aria-labelledby="employee-details-salary-heading"
+            className="details-card__section details-card__section--accent"
+          >
             <h2 id="employee-details-salary-heading" className="section-heading">
               Current salary
             </h2>

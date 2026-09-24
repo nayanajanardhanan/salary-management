@@ -114,10 +114,11 @@ export function AnalyticsPage() {
         <>
           <section aria-labelledby="analytics-overall-heading" className="section-block">
             <h2 id="analytics-overall-heading" className="section-heading">
+              <span className="section-heading__dot" aria-hidden="true" />
               Overall
             </h2>
             <div className="analytics-charts-row">
-              <BarList title="Salary records by currency" items={currencyCountItems} />
+              <BarList title="Salary records by currency" items={currencyCountItems} tone="purple" />
             </div>
             <div className="salary-stat-cards">
               {data.overall.map((stats) => (
@@ -128,10 +129,11 @@ export function AnalyticsPage() {
 
           <section aria-labelledby="analytics-department-heading" className="section-block">
             <h2 id="analytics-department-heading" className="section-heading">
+              <span className="section-heading__dot section-heading__dot--teal" aria-hidden="true" />
               By department
             </h2>
             <div className="analytics-charts-row">
-              <BarList title="Employees by department" items={departmentHeadcountItems} />
+              <BarList title="Employees by department" items={departmentHeadcountItems} tone="teal" />
             </div>
             <SalaryStatsTable
               rows={data.by_department}
@@ -143,10 +145,11 @@ export function AnalyticsPage() {
 
           <section aria-labelledby="analytics-country-heading" className="section-block">
             <h2 id="analytics-country-heading" className="section-heading">
+              <span className="section-heading__dot section-heading__dot--pink" aria-hidden="true" />
               By country
             </h2>
             <div className="analytics-charts-row">
-              <BarList title="Employees by country" items={countryHeadcountItems} />
+              <BarList title="Employees by country" items={countryHeadcountItems} tone="pink" />
             </div>
             <SalaryStatsTable
               rows={data.by_country}
